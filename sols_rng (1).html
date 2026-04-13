@@ -1,0 +1,2831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joe's RNG</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05060f;--panel:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#e8e4f0;--muted:#6b6880;--gold:#ffbb00;--gold2:#ffe58a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;display:flex;flex-direction:column;align-items:center}
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+#starCanvas{position:absolute;inset:0;width:100%;height:100%;opacity:.7}
+#wrap{position:relative;z-index:1;width:100%;max-width:640px;padding:1.4rem 1rem 3rem}
+
+/* LOGO */
+.logo{text-align:center;margin-bottom:1.2rem}
+.logo h1{font-family:'Cinzel Decorative',serif;font-size:clamp(24px,7vw,44px);font-weight:700;background:linear-gradient(135deg,#ffe58a,#ffbb00,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 20px #ffaa0055)}
+.logo p{font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+
+/* TOP BAR */
+.top-bar{display:flex;align-items:center;justify-content:space-between;background:rgba(255,187,0,0.05);border:1px solid rgba(255,187,0,0.17);border-radius:14px;padding:9px 16px;margin-bottom:1rem;gap:8px}
+.coin-left{display:flex;align-items:center;gap:8px;flex:1}
+.coin-orb{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fffd,#ffbb00,#cc8800);border:1.5px solid #ffdd66;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#7a4a00;flex-shrink:0}
+.coin-amt{font-family:'Cinzel',serif;font-size:20px;font-weight:700;color:var(--gold);line-height:1}
+.coin-sub{font-size:9px;letter-spacing:1.5px;color:rgba(255,187,0,0.4);margin-top:1px}
+.top-btns{display:flex;gap:6px}
+.top-btn{padding:7px 14px;border:1px solid rgba(255,255,255,0.12);background:var(--panel);color:#ccc;border-radius:9px;font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:background .18s,border-color .18s,color .18s,transform .1s;white-space:nowrap}
+.top-btn:hover{background:rgba(255,255,255,0.07);color:#fff}
+.top-btn:active{transform:scale(0.94)}
+.top-btn.gold-btn{border-color:rgba(255,187,0,0.32);color:var(--gold2);background:rgba(255,187,0,0.07)}
+.top-btn.gold-btn:hover{background:rgba(255,187,0,0.14)}
+
+/* AURA STAGE */
+.aura-stage{position:relative;width:100%;aspect-ratio:1/0.64;border-radius:18px;background:var(--panel);border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;display:flex;align-items:center;justify-content:center}
+#auraCanvas{position:absolute;inset:0;width:100%;height:100%}
+.aura-info{position:relative;z-index:2;text-align:center;pointer-events:none}
+.aura-name{font-family:'Cinzel',serif;font-size:clamp(18px,5vw,32px);font-weight:700;color:#fff;text-shadow:0 0 30px currentColor;letter-spacing:2px}
+.aura-odds{font-size:12px;letter-spacing:2px;color:rgba(255,255,255,0.42);margin-top:5px}
+.aura-flavor{font-size:11px;color:rgba(255,255,255,0.28);margin-top:6px;letter-spacing:1px;font-style:italic;max-width:260px}
+.rarity-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 13px;border-radius:30px;font-size:10px;letter-spacing:2px;font-weight:600;text-transform:uppercase;margin-top:8px;border:1px solid}
+
+/* EQUIPPED AURA BANNER */
+.equipped-banner{display:none;align-items:center;gap:8px;background:rgba(255,187,0,0.06);border:1px solid rgba(255,187,0,0.2);border-radius:10px;padding:7px 12px;margin-bottom:.8rem;font-size:12px;color:var(--gold2);letter-spacing:1px}
+.equipped-banner.show{display:flex}
+.eq-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* LUCK ROW */
+.luck-row{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:9px 13px;margin-bottom:.9rem}
+.luck-top{display:flex;align-items:center;gap:9px}
+.luck-lbl{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.luck-val{font-family:'Cinzel',serif;font-size:17px;font-weight:700;color:var(--gold2);min-width:50px}
+.luck-bar{flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
+.luck-fill{height:100%;background:linear-gradient(90deg,#ffbb00,#ff6b00);border-radius:2px;transition:width .5s}
+.boost-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.bp{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid rgba(74,158,255,0.22);color:rgba(74,158,255,0.65)}
+
+/* AUTO ROLL ROW */
+.auto-row{display:flex;align-items:center;justify-content:space-between;background:rgba(77,219,130,0.05);border:1px solid rgba(77,219,130,0.18);border-radius:12px;padding:9px 14px;margin-bottom:.9rem}
+.auto-left{display:flex;align-items:center;gap:8px}
+.auto-icon{font-size:16px}
+.auto-text{font-size:12px;letter-spacing:1px;color:#4ddb82;font-weight:600}
+.auto-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.auto-toggle{position:relative;width:42px;height:22px;cursor:pointer;flex-shrink:0}
+.auto-toggle input{opacity:0;width:0;height:0;position:absolute}
+.auto-slider{position:absolute;inset:0;border-radius:11px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);transition:background .25s}
+.auto-slider::before{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#888;top:2px;left:2px;transition:transform .25s,background .25s}
+.auto-toggle input:checked+.auto-slider{background:rgba(77,219,130,0.3);border-color:rgba(77,219,130,0.5)}
+.auto-toggle input:checked+.auto-slider::before{transform:translateX(20px);background:#4ddb82}
+.auto-locked{font-size:11px;color:var(--muted);letter-spacing:1px}
+.auto-progress{font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:1px}
+
+/* ROLL SECTION */
+.roll-section{margin-bottom:.9rem}
+.roll-count-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.rc-btn{flex:1;min-width:50px;padding:7px 4px;border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:9px;font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .18s;text-align:center;position:relative}
+.rc-btn:hover{border-color:rgba(255,255,255,0.2);color:#fff;background:rgba(255,255,255,0.06)}
+.rc-btn.active{border-color:rgba(255,187,0,0.45);color:var(--gold);background:rgba(255,187,0,0.08)}
+.rc-btn.locked{opacity:.35;cursor:not-allowed}
+.rc-btn .lock-badge{position:absolute;top:-5px;right:-5px;font-size:9px;background:#1a1020;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:1px 5px;color:var(--muted);letter-spacing:.5px}
+.roll-btn{width:100%;padding:16px;border:none;border-radius:13px;font-family:'Cinzel',serif;font-size:19px;font-weight:700;letter-spacing:4px;cursor:pointer;position:relative;overflow:hidden;transition:transform .1s,filter .1s;background:linear-gradient(135deg,#1a1200,#2d2000);color:var(--gold);border:1px solid rgba(255,187,0,0.36)}
+.roll-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);transform:translateX(-100%);transition:transform .5s}
+.roll-btn:hover::before{transform:translateX(100%)}
+.roll-btn:active{transform:scale(0.97)}
+.roll-btn.rolling{pointer-events:none;animation:rp .12s ease-in-out infinite alternate}
+@keyframes rp{0%{filter:brightness(1)}100%{filter:brightness(1.45)}}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.9rem}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:7px 6px;text-align:center}
+.slbl{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+.sval{font-size:18px;font-weight:600;color:#fff;margin-top:2px;font-family:'Cinzel',serif}
+
+/* FLASH / POPUP */
+.roll-flash{position:fixed;inset:0;pointer-events:none;z-index:100;opacity:0;transition:opacity .15s}
+
+/* CUTSCENE */
+#cutscene{position:fixed;inset:0;z-index:800;pointer-events:none;opacity:0;transition:opacity .35s}
+#cutscene.active{pointer-events:all}
+#cs-canvas{position:absolute;inset:0;width:100%;height:100%}
+#cs-overlay{position:absolute;inset:0;background:#000;opacity:0;transition:opacity .5s}
+#cs-rarity{position:absolute;top:28%;left:50%;transform:translateX(-50%) translateY(24px);font-family:'Cinzel',serif;font-size:clamp(11px,2.8vw,17px);letter-spacing:7px;text-transform:uppercase;font-weight:700;opacity:0;transition:opacity .45s,transform .45s;text-align:center;white-space:nowrap}
+#cs-name{position:absolute;top:36%;left:50%;transform:translateX(-50%) translateY(34px);font-family:'Cinzel Decorative',serif;font-size:clamp(26px,7.5vw,60px);font-weight:700;opacity:0;transition:opacity .55s,transform .55s;text-align:center;text-shadow:0 0 50px currentColor,0 0 100px currentColor;white-space:nowrap;letter-spacing:3px}
+#cs-odds{position:absolute;top:57%;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:clamp(11px,2.2vw,15px);letter-spacing:4px;opacity:0;transition:opacity .4s;text-align:center;color:rgba(255,255,255,0.4)}
+#cs-flavor{position:absolute;top:63%;left:50%;transform:translateX(-50%);font-family:'Rajdhani',sans-serif;font-size:clamp(12px,2.5vw,16px);letter-spacing:2px;opacity:0;transition:opacity .5s;text-align:center;color:rgba(255,255,255,0.5);font-style:italic;max-width:80vw}
+#cs-tap{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:rgba(255,255,255,0.28);opacity:0;transition:opacity .4s;animation:csTapBlink 1.4s ease-in-out infinite alternate;text-transform:uppercase}
+@keyframes csTapBlink{0%{opacity:0.15}100%{opacity:0.65}}
+#cs-lines{position:absolute;inset:0;pointer-events:none}
+/* SECRET CINEMATIC EXTRAS */
+#cs-secret-bg{position:absolute;inset:0;opacity:0;transition:opacity 1s;background:radial-gradient(ellipse at 50% 50%,#1a001a 0%,#000 60%)}
+#cs-secret-title{position:absolute;top:8%;left:50%;transform:translateX(-50%);font-family:'Cinzel Decorative',serif;font-size:clamp(10px,2vw,14px);letter-spacing:8px;color:rgba(255,42,255,0.3);opacity:0;transition:opacity .6s;text-transform:uppercase;text-align:center;white-space:nowrap}
+#cs-secret-crack{position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none}
+/* MULTI-ROLL RESULTS INLINE PANEL */
+#results-panel{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:14px;margin-bottom:.9rem;overflow:hidden;transition:max-height .35s cubic-bezier(.16,1,.3,1),opacity .25s;max-height:0;opacity:0}
+#results-panel.show{max-height:520px;opacity:1}
+.rp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none}
+.rp-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold2);letter-spacing:1px}
+.rp-meta{font-size:10px;color:var(--muted);letter-spacing:1px}
+.rp-toggle{font-size:12px;color:var(--muted);transition:transform .25s;display:inline-block}
+.rp-toggle.collapsed{transform:rotate(-90deg)}
+.rp-body{padding:0 10px 10px;max-height:420px;overflow-y:auto;transition:max-height .3s cubic-bezier(.16,1,.3,1)}
+.rp-body.collapsed{max-height:0;overflow:hidden}
+.rp-summary{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;padding-top:4px}
+.rp-chip{padding:3px 9px;border-radius:20px;font-size:10px;letter-spacing:1px;border:1px solid;font-weight:500}
+.rp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px}
+.rp-card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:9px;padding:7px 5px;text-align:center;animation:rpop .25s cubic-bezier(.16,1,.3,1) both}
+@keyframes rpop{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:none}}
+.rp-orb{width:32px;height:32px;border-radius:50%;margin:0 auto 5px}
+.rp-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-rar{font-size:8px;letter-spacing:1px;text-transform:uppercase;font-weight:600}
+/* AURA PICKER */
+.aura-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;max-height:280px;overflow-y:auto;margin-top:8px}
+.ap-btn{padding:8px 5px;border:1px solid rgba(255,42,255,0.18);background:rgba(255,42,255,0.04);border-radius:9px;cursor:pointer;text-align:center;transition:background .15s,border-color .15s,transform .1s}
+.ap-btn:hover{background:rgba(255,42,255,0.12);border-color:rgba(255,42,255,0.4)}
+.ap-btn:active{transform:scale(0.94)}
+.ap-orb{width:28px;height:28px;border-radius:50%;margin:0 auto 4px}
+.ap-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-rar{font-size:8px;letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+.cpop{position:fixed;pointer-events:none;font-family:'Cinzel',serif;font-size:14px;font-weight:700;color:var(--gold);z-index:500;transition:transform .8s ease-out,opacity .8s ease-out}
+
+/* RARITY CLASSES */
+.r-common   {color:#c8d0cc;border-color:rgba(200,208,204,0.26);background:rgba(200,208,204,0.05)}
+.r-uncommon {color:#4ddb82;border-color:rgba(77,219,130,0.3); background:rgba(77,219,130,0.06)}
+.r-rare     {color:#4a9eff;border-color:rgba(74,158,255,0.3); background:rgba(74,158,255,0.07)}
+.r-epic     {color:#c06eff;border-color:rgba(192,110,255,0.3);background:rgba(192,110,255,0.07)}
+.r-legendary{color:#ffbb00;border-color:rgba(255,187,0,0.36); background:rgba(255,187,0,0.08)}
+.r-mythical {color:#ff4a6e;border-color:rgba(255,74,110,0.36);background:rgba(255,74,110,0.08)}
+.r-secret   {color:#ff2aff;border-color:rgba(255,42,255,0.36);background:rgba(255,42,255,0.08)}
+
+/* ── MODAL BASE ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.74);z-index:300;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(5px)}
+.modal-bg.open{display:flex}
+.modal{width:100%;max-width:640px;background:#0b0c1a;border:1px solid rgba(255,255,255,0.08);border-radius:20px 20px 0 0;padding:1.4rem 1rem 2.8rem;max-height:88vh;overflow-y:auto;animation:su .26s cubic-bezier(.16,1,.3,1)}
+@keyframes su{from{transform:translateY(50px);opacity:0}to{transform:none;opacity:1}}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem}
+.mtitle{font-family:'Cinzel Decorative',serif;font-size:18px;color:var(--gold2)}
+.mright{display:flex;align-items:center;gap:10px}
+.mcoins{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);display:flex;align-items:center;gap:4px}
+.mclose{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:color .2s;flex-shrink:0}
+.mclose:hover{color:#fff}
+.sec-ttl{font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:9px;margin-top:1.1rem}
+.sec-ttl:first-child{margin-top:0}
+
+/* ── SHOP GRID ── */
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:2px}
+.rm-card{grid-column:1/-1}
+.sitem{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:12px 11px;cursor:pointer;transition:border-color .16s,background .16s,transform .1s;position:relative;overflow:hidden}
+.sitem:hover{border-color:rgba(255,255,255,0.16);background:rgba(255,255,255,0.05)}
+.sitem:active{transform:scale(0.96)}
+.sitem.owned{border-color:rgba(77,219,130,0.35)}
+.sitem.active-it{border-color:rgba(255,187,0,0.42);background:rgba(255,187,0,0.055)}
+.sitem.broke{opacity:.38;cursor:not-allowed}
+.sico{font-size:24px;display:block;margin-bottom:6px}
+.snm{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:#fff;margin-bottom:2px}
+.sdsc{font-size:10px;color:var(--muted);line-height:1.42;margin-bottom:7px}
+.seff{font-size:10px;color:#4ddb82;font-weight:600;margin-bottom:5px}
+/* CRAFTING */
+.craft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;margin-bottom:4px}
+.craft-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:12px 11px;position:relative;transition:border-color .16s,background .16s}
+.craft-card.craftable{border-color:rgba(77,219,130,0.35);cursor:pointer}
+.craft-card.craftable:hover{background:rgba(77,219,130,0.06)}
+.craft-card.craftable:active{transform:scale(0.96)}
+.craft-card.locked{opacity:.38;cursor:not-allowed}
+.craft-icon{font-size:26px;display:block;margin-bottom:6px}
+.craft-nm{font-family:"Cinzel",serif;font-size:11px;font-weight:700;color:#fff;margin-bottom:3px}
+.craft-eff{font-size:10px;color:#4ddb82;font-weight:600;margin-bottom:6px}
+.craft-reqs{margin-bottom:7px}
+.craft-req{display:flex;align-items:center;gap:5px;font-size:10px;margin-bottom:3px}
+.craft-req-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.craft-req-txt{color:var(--muted)}
+.craft-req-txt.met{color:#4ddb82}
+.craft-req-txt.unmet{color:#ff4a6e}
+.craft-btn{width:100%;padding:6px;border-radius:7px;font-size:10px;letter-spacing:1px;font-weight:700;cursor:pointer;border:1px solid;font-family:"Cinzel",serif;transition:background .15s}
+.craft-btn.can{border-color:rgba(77,219,130,0.35);color:#4ddb82;background:rgba(77,219,130,0.07)}
+.craft-btn.can:hover{background:rgba(77,219,130,0.16)}
+.craft-btn.no{border-color:rgba(255,255,255,0.08);color:var(--muted);background:transparent;cursor:not-allowed}
+/* FAVORITE */
+.icb-fav{border-color:rgba(255,200,0,0.25);color:rgba(255,200,0,0.5);background:transparent}
+.icb-fav.fav-on{border-color:rgba(255,200,0,0.5);color:#ffcc00;background:rgba(255,200,0,0.08)}
+.icb-fav:hover{background:rgba(255,200,0,0.1)}
+.fav-badge{position:absolute;top:5px;left:5px;font-size:12px;line-height:1}
+.sprc{font-family:'Cinzel',serif;font-size:11px;color:var(--gold)}
+.sbadge{position:absolute;top:6px;right:6px;font-size:9px;padding:2px 6px;border-radius:8px;font-weight:600}
+.sb-own{background:rgba(77,219,130,0.14);color:#4ddb82;border:1px solid rgba(77,219,130,0.22)}
+.sb-act{background:rgba(255,187,0,0.13);color:var(--gold);border:1px solid rgba(255,187,0,0.25)}
+
+/* ── INVENTORY MODAL ── */
+.inv-tabs{display:flex;gap:6px;margin-bottom:1rem}
+.itab{flex:1;padding:8px;border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:9px;font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .18s;text-align:center}
+.itab.active{border-color:rgba(255,187,0,0.38);color:var(--gold);background:rgba(255,187,0,0.07)}
+.inv-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.8rem}
+.filter-chip{padding:4px 10px;border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:20px;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .15s}
+.filter-chip.active{border-color:rgba(255,255,255,0.25);color:#fff;background:rgba(255,255,255,0.07)}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px}
+.inv-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;transition:border-color .15s,transform .1s;position:relative}
+.inv-card:hover{border-color:rgba(255,255,255,0.18);transform:scale(1.02)}
+.inv-card.equipped-card{border-color:rgba(255,187,0,0.45);background:rgba(255,187,0,0.06)}
+.inv-card-orb{width:100%;aspect-ratio:1/0.6;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:7px;position:relative;overflow:hidden}
+.inv-card-name{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-card-rarity{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.inv-card-btns{display:flex;gap:4px}
+.icb{flex:1;padding:4px;border-radius:6px;font-size:9px;letter-spacing:.5px;font-weight:600;cursor:pointer;border:1px solid;text-align:center;transition:background .15s;font-family:'Rajdhani',sans-serif}
+.icb-equip{border-color:rgba(255,187,0,0.3);color:var(--gold);background:rgba(255,187,0,0.07)}
+.icb-equip:hover{background:rgba(255,187,0,0.16)}
+.icb-equip.unequip{border-color:rgba(77,219,130,0.3);color:#4ddb82;background:rgba(77,219,130,0.07)}
+.icb-equip.unequip:hover{background:rgba(77,219,130,0.16)}
+.icb-sell{border-color:rgba(255,74,110,0.25);color:#ff4a6e;background:rgba(255,74,110,0.05)}
+.icb-sell:hover{background:rgba(255,74,110,0.14)}
+.inv-sell-val{font-size:9px;color:rgba(255,187,0,0.5);margin-top:3px;letter-spacing:.5px}
+.inv-empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:14px;letter-spacing:1px}
+.inv-badge-eq{position:absolute;top:5px;right:5px;font-size:8px;background:rgba(255,187,0,0.18);color:var(--gold);border:1px solid rgba(255,187,0,0.28);border-radius:6px;padding:2px 5px;font-weight:600;letter-spacing:.5px}
+.inv-count-badge{position:absolute;top:5px;left:5px;font-size:9px;background:rgba(0,0,0,0.5);color:#fff;border-radius:6px;padding:2px 6px;font-weight:600}
+.inv-summary{display:flex;gap:6px;margin-bottom:.8rem}
+.inv-sum-card{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:7px 9px;text-align:center}
+.inv-sum-lbl{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+.inv-sum-val{font-size:16px;font-weight:600;color:#fff;font-family:'Cinzel',serif;margin-top:1px}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.6rem;left:50%;transform:translateX(-50%) translateY(10px);background:#12132a;border:1px solid var(--border);border-radius:11px;padding:8px 18px;font-size:12px;letter-spacing:1px;color:#fff;opacity:0;transition:opacity .22s,transform .22s;z-index:600;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── LOADING SCREEN ── */
+#loader{position:fixed;inset:0;background:#05060f;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s ease}
+#loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loader-title{font-family:'Cinzel Decorative',serif;font-size:clamp(28px,8vw,52px);font-weight:700;background:linear-gradient(135deg,#ffe58a,#ffbb00,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 30px #ffaa0070);letter-spacing:3px;animation:loaderPulse 1.8s ease-in-out infinite alternate}
+@keyframes loaderPulse{0%{filter:drop-shadow(0 0 15px #ffaa0050)}100%{filter:drop-shadow(0 0 40px #ffaa00cc)}}
+.loader-sub{font-size:12px;letter-spacing:4px;color:rgba(255,187,0,0.4);text-transform:uppercase;margin-top:10px;font-family:'Rajdhani',sans-serif}
+.loader-orb-wrap{position:relative;width:90px;height:90px;margin-bottom:2rem}
+.loader-orb{width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff8,#ffbb00,#cc6600);box-shadow:0 0 60px #ffaa0088,0 0 120px #ffaa0033;animation:orbPulse 2s ease-in-out infinite}
+@keyframes orbPulse{0%{box-shadow:0 0 60px #ffaa0088,0 0 120px #ffaa0033;transform:scale(1)}50%{box-shadow:0 0 80px #ff2aff88,0 0 160px #ff2aff22;transform:scale(1.08)}100%{box-shadow:0 0 60px #ffaa0088,0 0 120px #ffaa0033;transform:scale(1)}}
+.loader-ring{position:absolute;inset:-12px;border-radius:50%;border:1.5px solid transparent;border-top-color:#ffbb00;border-right-color:#ff2aff44;animation:ringSpin 1.2s linear infinite}
+.loader-ring2{position:absolute;inset:-22px;border-radius:50%;border:1px solid transparent;border-bottom-color:#ff2aff66;border-left-color:#ffbb0033;animation:ringSpin 2s linear infinite reverse}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+.loader-bar-wrap{width:220px;height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-top:2.5rem}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#ffbb00,#ff2aff);border-radius:2px;transition:width .15s linear}
+.loader-status{font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.3);text-transform:uppercase;margin-top:.7rem;font-family:'Rajdhani',sans-serif;min-height:16px}
+
+/* ── CHEAT MENU ── */
+.cheat-bg{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:900;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.cheat-bg.open{display:flex}
+.cheat-box{width:92%;max-width:400px;background:#09091a;border:1px solid rgba(255,42,255,0.35);border-radius:18px;padding:1.4rem 1.1rem 1.8rem;position:relative;box-shadow:0 0 80px rgba(255,42,255,0.15);max-height:85vh;overflow-y:auto}
+.cheat-box{animation:csu .25s cubic-bezier(.16,1,.3,1)}
+@keyframes csu{from{transform:scale(0.85) translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.cheat-hdr{text-align:center;margin-bottom:1.2rem}
+.cheat-title{font-family:'Cinzel Decorative',serif;font-size:19px;color:#ff2aff;filter:drop-shadow(0 0 12px #ff2aff99)}
+.cheat-sub{font-size:9px;letter-spacing:3px;color:rgba(255,42,255,0.38);text-transform:uppercase;margin-top:3px}
+.cheat-close{position:absolute;top:11px;right:11px;width:27px;height:27px;border-radius:50%;border:1px solid rgba(255,42,255,0.22);background:rgba(255,42,255,0.05);color:rgba(255,42,255,0.5);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:color .18s,background .18s}
+.cheat-close:hover{color:#ff2aff;background:rgba(255,42,255,0.12)}
+.cheat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:.9rem}
+.cbtn{padding:11px 7px;border:1px solid rgba(255,42,255,0.18);background:rgba(255,42,255,0.04);border-radius:11px;color:#e8e4f0;cursor:pointer;transition:background .16s,border-color .16s,transform .1s;text-align:center}
+.cbtn:hover{background:rgba(255,42,255,0.1);border-color:rgba(255,42,255,0.4)}
+.cbtn:active{transform:scale(0.94)}
+.cb-ico{font-size:22px;display:block;margin-bottom:4px}
+.cb-nm{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px}
+.cb-lbl{font-size:9px;color:var(--muted);margin-top:2px;font-family:'Rajdhani',sans-serif}
+.cheat-hr{height:1px;background:rgba(255,42,255,0.1);margin:.6rem 0 .9rem}
+.cheat-row{display:flex;gap:7px;margin-bottom:7px}
+.cheat-input{flex:1;padding:8px 11px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,42,255,0.18);border-radius:9px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;transition:border-color .18s}
+.cheat-input:focus{border-color:rgba(255,42,255,0.5)}
+.cheat-ibtn{padding:8px 13px;background:rgba(255,42,255,0.08);border:1px solid rgba(255,42,255,0.28);color:#ff2aff;border-radius:9px;font-family:'Cinzel',serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;white-space:nowrap;transition:background .16s}
+.cheat-ibtn:hover{background:rgba(255,42,255,0.18)}
+.cheat-mega{width:100%;padding:11px;border:1px solid rgba(255,42,255,0.4);background:rgba(255,42,255,0.08);border-radius:11px;color:#ff2aff;font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:background .18s,transform .1s;text-shadow:0 0 8px #ff2aff66;margin-bottom:7px}
+.cheat-mega:hover{background:rgba(255,42,255,0.16)}
+.cheat-mega:active{transform:scale(0.97)}
+
+
+.code-entry{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:10px 14px;margin-bottom:7px;gap:10px}
+.code-entry.redeemed{opacity:.45;border-color:rgba(77,219,130,0.15)}
+.code-tag{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.1)}
+.code-reward{font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;padding-left:8px}
+.code-status{font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 9px;border-radius:8px;white-space:nowrap}
+.code-status.claimed{background:rgba(77,219,130,0.12);color:#4ddb82;border:1px solid rgba(77,219,130,0.22)}
+.code-status.available{background:rgba(255,215,0,0.08);color:#ffd700;border:1px solid rgba(255,215,0,0.22)}
+
+/* ── AURA-SPECIFIC CUTSCENE EXTRAS ── */
+#cs-aura-fx{position:absolute;inset:0;pointer-events:none;z-index:1}
+/* ── SAVE INDICATOR ── */
+#saveIndicator{position:fixed;bottom:1.2rem;right:1rem;font-size:10px;letter-spacing:2px;color:#4ddb82;background:rgba(77,219,130,0.1);border:1px solid rgba(77,219,130,0.22);border-radius:8px;padding:5px 11px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:700;text-transform:uppercase}
+#saveIndicator.visible{opacity:1}
+
+/* ── CREDITS ── */
+.credit-name{font-family:'Cinzel Decorative',serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,#ffe58a,#ffbb00,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 10px #ffaa0044);letter-spacing:3px}
+
+/* ── UPDATE LOG ── */
+.update-hint{font-size:10px;letter-spacing:1.5px;color:rgba(74,158,255,0.55);background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.15);border-radius:8px;padding:7px 12px;margin-bottom:1rem;text-align:center}
+.update-entry{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px 14px;margin-bottom:9px}
+.update-entry:last-of-type{margin-bottom:0}
+.update-ver{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:1px;margin-bottom:2px}
+.update-date{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:9px}
+.update-list{list-style:none;display:flex;flex-direction:column;gap:5px;padding:0}
+.update-list li{font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:.5px;line-height:1.5;padding-left:12px;position:relative}
+.update-list li::before{content:'·';position:absolute;left:0;color:var(--muted)}
+.upd-hl{color:#c06eff;font-weight:600}
+.upd-code{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--gold);background:rgba(255,187,0,0.08);border:1px solid rgba(255,187,0,0.2);border-radius:5px;padding:1px 7px;cursor:pointer;transition:background .15s}
+.upd-code:hover{background:rgba(255,187,0,0.18)}
+</style>
+</head>
+<body>
+
+
+<div id="loader">
+  <div class="loader-orb-wrap">
+    <div class="loader-orb"></div>
+    <div class="loader-ring"></div>
+    <div class="loader-ring2"></div>
+  </div>
+  <div class="loader-title">JOE'S RNG</div>
+  <div class="loader-sub">Roll for your destiny</div>
+  <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+  <div class="loader-status" id="loaderStatus">Summoning auras...</div>
+</div>
+
+<div id="stars"><canvas id="starCanvas"></canvas></div>
+<div class="roll-flash" id="flash"></div>
+
+<!-- CUTSCENE -->
+<div id="cutscene">
+  <canvas id="cs-canvas"></canvas>
+  <div id="cs-overlay"></div>
+  <div id="cs-secret-bg"></div>
+  <canvas id="cs-secret-crack"></canvas>
+  <div id="cs-aura-fx"></div>
+  <div id="cs-secret-title">✦ SECRET DISCOVERY ✦</div>
+  <svg id="cs-lines" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="cs-rarity"></div>
+  <div id="cs-name"></div>
+  <div id="cs-odds"></div>
+  <div id="cs-flavor"></div>
+  <div id="cs-tap">TAP TO CONTINUE</div>
+</div>
+
+<!-- SHOP MODAL -->
+<div class="modal-bg" id="shopModal">
+<div class="modal">
+  <div class="mhdr">
+    <span class="mtitle">Shop</span>
+    <div class="mright">
+      <div class="mcoins">🪙 <span id="mCoins">0</span></div>
+      <button class="mclose" id="closeShop">✕</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:1rem" id="shopTabs">
+    <button class="itab active" id="stab-shop" onclick="setShopTab('shop')">🛒 Shop</button>
+    <button class="itab" id="stab-craft" onclick="setShopTab('craft')">⚗️ Craft</button>
+    <button class="itab" id="stab-codes" onclick="setShopTab('codes')">🔑 Codes</button>
+  </div>
+  <div id="shopBody"></div>
+  <div id="craftBody" style="display:none"></div>
+  <div id="codesShopBody" style="display:none"></div>
+</div>
+</div>
+
+<!-- INVENTORY MODAL -->
+<div class="modal-bg" id="invModal">
+<div class="modal">
+  <div class="mhdr">
+    <span class="mtitle">Inventory</span>
+    <div class="mright">
+      <div class="mcoins">🪙 <span id="iCoins">0</span></div>
+      <button class="mclose" id="closeInv">✕</button>
+    </div>
+  </div>
+  <div class="inv-tabs">
+    <button class="itab active" data-tab="all" onclick="setInvTab('all')">All</button>
+    <button class="itab" data-tab="uncommon" onclick="setInvTab('uncommon')">Uncommon+</button>
+    <button class="itab" data-tab="rare" onclick="setInvTab('rare')">Rare+</button>
+    <button class="itab" data-tab="epic" onclick="setInvTab('epic')">Epic+</button>
+  </div>
+  <div class="inv-summary">
+    <div class="inv-sum-card"><div class="inv-sum-lbl">Collected</div><div class="inv-sum-val" id="invTotal">0</div></div>
+    <div class="inv-sum-card"><div class="inv-sum-lbl">Unique</div><div class="inv-sum-val" id="invUnique">0</div></div>
+    <div class="inv-sum-card"><div class="inv-sum-lbl">Sell Value</div><div class="inv-sum-val" id="invSellVal" style="color:var(--gold);font-size:13px;margin-top:3px">0 🪙</div></div>
+  </div>
+  <button onclick="sellAll()" style="width:100%;padding:8px;background:rgba(255,74,110,0.07);border:1px solid rgba(255,74,110,0.25);color:#ff4a6e;border-radius:9px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;cursor:pointer;margin-bottom:.5rem;transition:background .18s" onmouseover="this.style.background='rgba(255,74,110,0.14)'" onmouseout="this.style.background='rgba(255,74,110,0.07)'">SELL ALL (keeps equipped &amp; ★ favorites)</button>
+  <div id="invGrid"></div>
+</div>
+</div>
+
+<!-- CHEAT MENU -->
+<div class="cheat-bg" id="cheatModal">
+<div class="cheat-box">
+  <button class="cheat-close" id="cheatClose">&#x2715;</button>
+  <div class="cheat-hdr">
+    <div class="cheat-title">&#9760; CHEAT MENU &#9760;</div>
+    <div class="cheat-sub">unlocked via secret code in codes menu</div>
+  </div>
+  <div class="cheat-grid">
+    <div class="cbtn" id="ch-coins1k"><span class="cb-ico">&#129689;</span><div class="cb-nm">+1,000 Coins</div><div class="cb-lbl">quick cash</div></div>
+    <div class="cbtn" id="ch-coins10k"><span class="cb-ico">&#128176;</span><div class="cb-nm">+10,000 Coins</div><div class="cb-lbl">big bag</div></div>
+    <div class="cbtn" id="ch-coins100k"><span class="cb-ico">&#127974;</span><div class="cb-nm">+100,000 Coins</div><div class="cb-lbl">bank robbery</div></div>
+    <div class="cbtn" id="ch-luck1"><span class="cb-ico">&#127808;</span><div class="cb-nm">+1.0 Luck</div><div class="cb-lbl">free boost</div></div>
+    <div class="cbtn" id="ch-luck10"><span class="cb-ico">&#128302;</span><div class="cb-nm">+10.0 Luck</div><div class="cb-lbl">godlike</div></div>
+    <div class="cbtn" id="ch-maxluck"><span class="cb-ico">&#9883;&#65039;</span><div class="cb-nm">Max Luck x999</div><div class="cb-lbl">set to max</div></div>
+    <div class="cbtn" id="ch-unlockrolls"><span class="cb-ico">&#128274;</span><div class="cb-nm">Unlock All Rolls</div><div class="cb-lbl">x2 x5 x10 x50</div></div>
+    <div class="cbtn" id="ch-buyshop"><span class="cb-ico">&#128717;</span><div class="cb-nm">Buy All Shop</div><div class="cb-lbl">own everything</div></div>
+    <div class="cbtn" id="ch-rolls100"><span class="cb-ico">&#9881;&#65039;</span><div class="cb-nm">+100 Rolls</div><div class="cb-lbl">unlock auto-roller</div></div>
+    <div class="cbtn" id="ch-potion"><span class="cb-ico">&#127775;</span><div class="cb-nm">Godly Potion</div><div class="cb-lbl">x10 for 999 rolls</div></div>
+  </div>
+  <div class="cheat-hr"></div>
+  <div class="cheat-row">
+    <input class="cheat-input" id="cheatCoinAmt" type="number" placeholder="Custom coin amount" min="1">
+    <button class="cheat-ibtn" id="ch-customcoins">Give</button>
+  </div>
+  <div class="cheat-row" style="margin-top:7px">
+    <input class="cheat-input" id="cheatLuckAmt" type="number" placeholder="Set luck to (e.g. 50)" min="1" step="0.1">
+    <button class="cheat-ibtn" id="ch-customluck">Set</button>
+  </div>
+  <div class="cheat-hr"></div>
+  <button class="cheat-mega" id="ch-forceSecret">&#10022; FORCE SECRET AURA &#10022;</button>
+  <button class="cheat-mega" id="ch-allAuras" style="border-color:rgba(74,158,255,0.4);color:#4a9eff;background:rgba(74,158,255,0.07);text-shadow:none;margin-top:7px">&#10022; GIVE ALL AURAS &#10022;</button>
+  <button class="cheat-mega" id="ch-roll100k" style="border-color:rgba(77,219,130,0.4);color:#4ddb82;background:rgba(77,219,130,0.07);text-shadow:none;margin-top:7px">&#10022; ROLL 100,000 TIMES &#10022;</button>
+  <div class="cheat-hr"></div>
+  <div style="font-size:10px;letter-spacing:2px;color:rgba(255,42,255,0.5);text-transform:uppercase;margin-bottom:6px">Pick Next Aura</div>
+  <div class="aura-picker-grid" id="aurapicker"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- CREDITS MODAL -->
+<div class="modal-bg" id="creditsModal">
+<div class="modal" style="text-align:center;padding-bottom:2.2rem">
+  <div class="mhdr">
+    <span class="mtitle" style="color:var(--gold2)">✦ Credits</span>
+    <button class="mclose" onclick="document.getElementById('creditsModal').classList.remove('open')">✕</button>
+  </div>
+  <div style="margin:1.4rem 0 1rem">
+    <div style="font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:1.2rem">Made by</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="credit-name">Dylan</div>
+      <div class="credit-name">Collon</div>
+      <div class="credit-name">Luke</div>
+    </div>
+  </div>
+  <div style="margin-top:1.6rem;padding:12px 16px;background:rgba(255,187,0,0.05);border:1px solid rgba(255,187,0,0.14);border-radius:11px">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;line-height:1.7">
+      💬 Have a suggestion?<br>
+      <span style="color:var(--gold2);font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px">DM joewalmart.html on Discord</span>
+    </div>
+  </div>
+  <button onclick="resetSave()" style="margin-top:1rem;width:100%;padding:9px;background:rgba(255,74,110,0.06);border:1px solid rgba(255,74,110,0.2);color:#ff4a6e;border-radius:9px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,74,110,0.14)'" onmouseout="this.style.background='rgba(255,74,110,0.06)'">🗑️ RESET SAVE</button>
+</div>
+</div>
+
+<!-- UPDATE LOG MODAL -->
+<div class="modal-bg" id="updateModal">
+<div class="modal">
+  <div class="mhdr">
+    <span class="mtitle" style="color:#4a9eff;filter:drop-shadow(0 0 8px #4a9eff55)">📋 Update Log</span>
+    <button class="mclose" onclick="document.getElementById('updateModal').classList.remove('open')">✕</button>
+  </div>
+  <div class="update-hint">💡 Some updates contain hidden codes — read carefully!</div>
+
+  <div class="update-entry">
+    <div class="update-ver">v1.3 — The Divine Update</div>
+    <div class="update-date">Latest</div>
+    <ul class="update-list">
+      <li>Added 2 new ultra-rare secret auras: <span class="upd-hl">Celestial Rift</span> (1 in 500M) and <span class="upd-hl">God's Wrath</span> (1 in 750M)</li>
+      <li>Unique cutscenes for every aura with 1-in-100k+ odds</li>
+      <li>8 new crafting recipes including the powerful <span class="upd-hl">Aura Essence</span></li>
+      <li>5 new potions — Blood Potion, Cosmic Brew, and more</li>
+      <li>To celebrate the divine update, use code <span class="upd-code">GODMODE</span> for a coin + luck boost ⚡</li>
+    </ul>
+  </div>
+
+  <div class="update-entry">
+    <div class="update-ver">v1.2 — The Void Update</div>
+    <div class="update-date">Previous</div>
+    <ul class="update-list">
+      <li>Crafting system added — sacrifice auras to permanently gain luck</li>
+      <li>10 new craft recipes including Nexus Fragment and Oblivion Shard</li>
+      <li>Auto-roller now unlocks at 100 rolls instead of needing to buy it</li>
+      <li>New mythical auras: Cosmos, Dreamweaver added to the pool</li>
+      <li>Hunters of the void can use <span class="upd-code">SECRETHUNTER</span> and <span class="upd-code">VOIDWALKER</span> 🔮</li>
+    </ul>
+  </div>
+
+  <div class="update-entry">
+    <div class="update-ver">v1.1 — Lucky Charm Update</div>
+    <div class="update-date">Earlier</div>
+    <ul class="update-list">
+      <li>Luck multiplier upgrades added to the shop</li>
+      <li>Coin Ring, Coin Crown, and Coin Throne passive items</li>
+      <li>Multi-roll upgrades: x2, x5, x10, and x50</li>
+      <li>Inventory filtering by rarity tier</li>
+      <li>Early supporters: use <span class="upd-code">LUCKYDAY</span> and <span class="upd-code">STARDUST</span> 🌟</li>
+    </ul>
+  </div>
+
+  <div class="update-entry">
+    <div class="update-ver">v1.0 — Launch</div>
+    <div class="update-date">The Beginning</div>
+    <ul class="update-list">
+      <li>Joe's RNG goes live! Roll for auras across 7 rarity tiers</li>
+      <li>Shop with potions, coin boosters, and multi-roll unlocks</li>
+      <li>Cutscene reveals for rare+ auras</li>
+      <li>Thanks for playing — enter <span class="upd-code">JOESRNG</span> to kick things off 🪙</li>
+    </ul>
+  </div>
+
+  <div style="text-align:center;margin-top:1.2rem;font-size:10px;letter-spacing:2px;color:var(--muted)">MORE UPDATES COMING SOON ✦</div>
+</div>
+</div>
+
+<div id="wrap">
+  <div class="logo"><h1>JOE'S RNG</h1><p>Roll for your destiny</p></div>
+  <div id="saveIndicator">💾 Saved</div>
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="coin-left">
+      <div class="coin-orb">✦</div>
+      <div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span class="coin-amt" id="coinAmt">0</span>
+          <span style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">Coins</span>
+        </div>
+        <div class="coin-sub" id="coinSub">+coins per roll</div>
+      </div>
+    </div>
+    <div class="top-btns">
+      <button class="top-btn" id="openInvBtn" onclick="openInv()">🎒 INV</button>
+      <button class="top-btn" id="openCreditsBtn" onclick="openCredits()">👥</button>
+      <button class="top-btn" onclick="openUpdateLog()">📋</button>
+      <button class="top-btn gold-btn" id="openShopBtn">🛒 SHOP</button>
+    </div>
+  </div>
+
+  <!-- AURA STAGE -->
+  <div class="aura-stage" id="stage">
+    <canvas id="auraCanvas"></canvas>
+    <div class="aura-info">
+      <div class="aura-name" id="auraName">???</div>
+      <div class="aura-odds" id="auraOdds">1 in ???</div>
+      <div class="aura-flavor" id="auraFlavor">Press roll to begin your journey</div>
+      <span class="rarity-badge r-common" id="rarityBadge">—</span>
+    </div>
+  </div>
+
+  <!-- EQUIPPED BANNER -->
+  <div class="equipped-banner" id="equippedBanner">
+    <span class="eq-dot" id="eqDot"></span>
+    <span id="eqName">—</span>
+    <span style="color:var(--muted);font-size:10px;margin-left:auto">equipped</span>
+  </div>
+
+  <!-- LUCK ROW -->
+  <div class="luck-row">
+    <div class="luck-top">
+      <span class="luck-lbl">Luck</span>
+      <span class="luck-val" id="luckVal">x1.0</span>
+      <div class="luck-bar"><div class="luck-fill" id="luckFill" style="width:3%"></div></div>
+    </div>
+    <div class="boost-pills" id="boostPills"></div>
+  </div>
+
+  <!-- AUTO ROLL ROW -->
+  <div class="auto-row" id="autoRow">
+    <div class="auto-left">
+      <span class="auto-icon">⚙️</span>
+      <div id="autoTextWrap">
+        <div class="auto-text" id="autoText">Auto-Roller</div>
+        <div class="auto-sub" id="autoSub">Rolls automatically every 1.5s</div>
+      </div>
+    </div>
+    <div id="autoRight">
+      <div class="auto-locked" id="autoLocked">🔒 Unlock at 100 rolls</div>
+      <div class="auto-progress" id="autoProgress">0 / 100</div>
+    </div>
+  </div>
+
+  <!-- ROLL SECTION -->
+  <div class="roll-section">
+    <div class="roll-count-row" id="rollCountRow">
+      <button class="rc-btn active" data-n="1" onclick="selectRollCount(this,1)">x1</button>
+      <button class="rc-btn locked" data-n="2" onclick="selectRollCount(this,2)">x2<span class="lock-badge">Shop</span></button>
+      <button class="rc-btn locked" data-n="5" onclick="selectRollCount(this,5)">x5<span class="lock-badge">Shop</span></button>
+      <button class="rc-btn locked" data-n="10" onclick="selectRollCount(this,10)">x10<span class="lock-badge">Shop</span></button>
+      <button class="rc-btn locked" data-n="50" onclick="selectRollCount(this,50)">x50<span class="lock-badge">Shop</span></button>
+    </div>
+    <button class="roll-btn" id="rollBtn">ROLL</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="slbl">Rolls</div><div class="sval" id="sRolls">0</div></div>
+    <div class="stat"><div class="slbl">Coins</div><div class="sval" id="sCoins" style="color:var(--gold);font-size:14px;margin-top:4px">0</div></div>
+    <div class="stat"><div class="slbl">Best</div><div class="sval" id="sBest" style="font-size:11px;margin-top:5px;line-height:1.2">—</div></div>
+    <div class="stat"><div class="slbl">In Inv</div><div class="sval" id="sInv">0</div></div>
+  </div>
+
+  <!-- INLINE MULTI-ROLL RESULTS -->
+  <div id="results-panel">
+    <div class="rp-header" onclick="toggleResults()">
+      <div>
+        <span class="rp-title" id="rp-title">Last Roll Results</span>
+        <div class="rp-meta" id="rp-meta"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="rp-summary" id="rp-summary" style="margin:0"></div>
+        <span class="rp-toggle" id="rp-toggle">&#9660;</span>
+      </div>
+    </div>
+    <div class="rp-body" id="rp-body">
+      <div class="rp-grid" id="rp-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── AURAS ─────────────────────────────────────────────────────────────────
+const AURAS=[
+  // Common
+  {name:"Wind",         rarity:"common",   odds:2,        color:"#a8d8ea",p:"drift",     flavor:"A gentle breeze follows your every step.",       coins:1},
+  {name:"Sand",         rarity:"common",   odds:3,        color:"#d4b896",p:"dust",      flavor:"The desert remembers your name.",                 coins:1},
+  {name:"Stone",        rarity:"common",   odds:4,        color:"#8c9e8e",p:"dust",      flavor:"Solid as the earth beneath you.",                 coins:1},
+  {name:"Ember",        rarity:"common",   odds:5,        color:"#ff8c42",p:"fire",      flavor:"A flicker of warmth in the cold.",                coins:2},
+  {name:"Mud",          rarity:"common",   odds:6,        color:"#7a5c3a",p:"dust",      flavor:"Humble, earthy, real.",                           coins:2},
+  {name:"Ash",          rarity:"common",   odds:4,        color:"#b0a8a0",p:"dust",      flavor:"What remains after everything burns.",            coins:1},
+  {name:"Pebble",       rarity:"common",   odds:5,        color:"#9a9080",p:"dust",      flavor:"Small, but never forgotten.",                     coins:1},
+  {name:"Drizzle",      rarity:"common",   odds:6,        color:"#99ccdd",p:"bubble",    flavor:"The first drop before the storm.",                coins:2},
+  {name:"Spark",        rarity:"common",   odds:5,        color:"#ffee44",p:"fire",      flavor:"Every inferno started just like this.",           coins:2},
+  {name:"Smoke",        rarity:"common",   odds:7,        color:"#888898",p:"drift",     flavor:"Hard to see, impossible to catch.",               coins:2},
+  // Uncommon
+  {name:"Storm",        rarity:"uncommon", odds:25,       color:"#4ddb82",p:"lightning", flavor:"Thunder echoes at your command.",                 coins:5},
+  {name:"Aqua",         rarity:"uncommon", odds:30,       color:"#00d4ff",p:"bubble",    flavor:"The tides bend to your will.",                    coins:6},
+  {name:"Forest",       rarity:"uncommon", odds:40,       color:"#2ecc71",p:"leaf",      flavor:"Ancient trees whisper your legend.",              coins:7},
+  {name:"Frost",        rarity:"uncommon", odds:50,       color:"#b0e8ff",p:"snow",      flavor:"Cold blooded and crystal clear.",                 coins:8},
+  {name:"Magma",        rarity:"uncommon", odds:60,       color:"#ff6a00",p:"fire",      flavor:"The earth bleeds for you.",                       coins:9},
+  {name:"Bramble",      rarity:"uncommon", odds:35,       color:"#5a9e4a",p:"leaf",      flavor:"Nature grows where it is least expected.",        coins:7},
+  {name:"Cinder",       rarity:"uncommon", odds:45,       color:"#dd6622",p:"fire",      flavor:"Still smoldering long after the fire.",           coins:8},
+  {name:"Mist",         rarity:"uncommon", odds:28,       color:"#cce8f0",p:"drift",     flavor:"You move like fog — seen but never touched.",     coins:6},
+  {name:"Petal",        rarity:"uncommon", odds:55,       color:"#ffaacc",p:"leaf",      flavor:"Delicate, brief, beautiful.",                     coins:8},
+  {name:"Current",      rarity:"uncommon", odds:38,       color:"#22aaee",p:"bubble",    flavor:"The river carves its own path.",                  coins:7},
+  {name:"Gust",         rarity:"uncommon", odds:32,       color:"#aaddff",p:"drift",     flavor:"Blink and it's already gone.",                    coins:6},
+  {name:"Hail",         rarity:"uncommon", odds:48,       color:"#cceeff",p:"snow",      flavor:"Cold fury from above.",                           coins:8},
+  // Rare
+  {name:"Inferno",      rarity:"rare",     odds:250,      color:"#ff4500",p:"fire",      flavor:"Born from the heart of a volcano.",               coins:25},
+  {name:"Glacier",      rarity:"rare",     odds:500,      color:"#7ec8e3",p:"snow",      flavor:"An age of ice flows through you.",                coins:35},
+  {name:"Thunder",      rarity:"rare",     odds:750,      color:"#ffe066",p:"lightning", flavor:"The sky cracks at your presence.",                coins:45},
+  {name:"Void",         rarity:"rare",     odds:1000,     color:"#7f5af0",p:"void",      flavor:"Something watches from the dark.",                coins:55},
+  {name:"Tide",         rarity:"rare",     odds:1200,     color:"#0af",    p:"bubble",   flavor:"The ocean has a long memory.",                    coins:60},
+  {name:"Plague",       rarity:"rare",     odds:1500,     color:"#8aff40",p:"toxic",     flavor:"Everything it touches withers.",                  coins:70},
+  {name:"Blizzard",     rarity:"rare",     odds:400,      color:"#88ccff",p:"snow",      flavor:"A storm that buries entire cities.",              coins:30},
+  {name:"Quake",        rarity:"rare",     odds:600,      color:"#cc9944",p:"dust",      flavor:"The earth shook when you arrived.",               coins:38},
+  {name:"Venom",        rarity:"rare",     odds:850,      color:"#77ff44",p:"toxic",     flavor:"One drop is enough.",                             coins:48},
+  {name:"Magnet",       rarity:"rare",     odds:1100,     color:"#ff4488",p:"void",      flavor:"Everything is drawn toward you.",                 coins:58},
+  {name:"Mirage",       rarity:"rare",     odds:1350,     color:"#ffddaa",p:"drift",     flavor:"Real enough to fool the gods.",                   coins:65},
+  {name:"Coral",        rarity:"rare",     odds:900,      color:"#ff7766",p:"bubble",    flavor:"The reef of a thousand years.",                   coins:50},
+  // Epic
+  {name:"Galaxy",       rarity:"epic",     odds:2500,     color:"#c06eff",p:"star",      flavor:"You carry a universe within.",                    coins:100},
+  {name:"Crimson",      rarity:"epic",     odds:5000,     color:"#ff1e56",p:"fire",      flavor:"Stained by the blood of titans.",                 coins:150},
+  {name:"Celestial",    rarity:"epic",     odds:7500,     color:"#a0c4ff",p:"star",      flavor:"Light from a dead star found you.",               coins:200},
+  {name:"Abyss",        rarity:"epic",     odds:10000,    color:"#8855ff",p:"void",      flavor:"Where light goes to die.",                        coins:250},
+  {name:"Tempest",      rarity:"epic",     odds:8000,     color:"#44aaff",p:"lightning", flavor:"The storm bows to no one.",                       coins:220},
+  {name:"Prism",        rarity:"epic",     odds:12000,    color:"#ff88ff",p:"prism",     flavor:"Every angle reveals a new truth.",                coins:280},
+  {name:"Wraith",       rarity:"epic",     odds:3500,     color:"#aaaacc",p:"void",      flavor:"You drift between living and forgotten.",         coins:120},
+  {name:"Infernal",     rarity:"epic",     odds:6000,     color:"#cc2200",p:"fire",      flavor:"Forged in the deepest pit.",                      coins:165},
+  {name:"Aurora Veil",  rarity:"epic",     odds:9000,     color:"#88ffdd",p:"aurora",    flavor:"A curtain of light drawn just for you.",          coins:235},
+  {name:"Thornwall",    rarity:"epic",     odds:4500,     color:"#44aa44",p:"leaf",      flavor:"Impenetrable. Unstoppable. Yours.",               coins:140},
+  {name:"Brimstone",    rarity:"epic",     odds:11000,    color:"#ff8800",p:"fire",      flavor:"The sulfur reeks of ancient power.",              coins:265},
+  {name:"Polaris",      rarity:"epic",     odds:13000,    color:"#ddeeff",p:"star",      flavor:"Every lost thing navigates by you.",              coins:300},
+  {name:"Nether",       rarity:"epic",     odds:15000,    color:"#553388",p:"void",      flavor:"Pulled from below the world's floor.",            coins:340},
+  // Legendary
+  {name:"Solar",        rarity:"legendary",odds:25000,    color:"#ffdd00",p:"solar",     flavor:"The sun itself blessed your soul.",               coins:500},
+  {name:"Aurora",       rarity:"legendary",odds:50000,    color:"#00ffcc",p:"aurora",    flavor:"Northern lights dance for you alone.",            coins:750},
+  {name:"Tsunami",      rarity:"legendary",odds:100000,   color:"#0077ff",p:"bubble",    flavor:"A wave that swallowed a continent.",              coins:1000},
+  {name:"Starfall",     rarity:"legendary",odds:200000,   color:"#ffe8a1",p:"star",      flavor:"A thousand stars fell for this moment.",          coins:1500},
+  {name:"Eclipse",      rarity:"legendary",odds:150000,   color:"#220033",p:"eclipse",   flavor:"When the light dies, you remain.",                coins:1200},
+  {name:"Phoenix",      rarity:"legendary",odds:300000,   color:"#ff7700",p:"phoenix",   flavor:"Death is just another beginning.",                coins:2000},
+  {name:"Glacial Tomb", rarity:"legendary",odds:80000,    color:"#aaeeff",p:"snow",      flavor:"Frozen at the peak of power.",                   coins:900},
+  {name:"Hellfire",     rarity:"legendary",odds:120000,   color:"#ff2200",p:"fire",      flavor:"The fire that ends worlds.",                      coins:1100},
+  {name:"Stormcrown",   rarity:"legendary",odds:175000,   color:"#88aaff",p:"lightning", flavor:"You rule what cannot be ruled.",                  coins:1350},
+  {name:"Mistveil",     rarity:"legendary",odds:60000,    color:"#eef8ff",p:"drift",     flavor:"Wrapped in fog older than memory.",               coins:800},
+  {name:"Bloodmoon",    rarity:"legendary",odds:250000,   color:"#cc0033",p:"eclipse",   flavor:"The moon wept the night you arrived.",            coins:1800},
+  {name:"Verdant",      rarity:"legendary",odds:35000,    color:"#33ff88",p:"leaf",      flavor:"Life erupts wherever you tread.",                 coins:600},
+  // Mythical
+  {name:"Nexus",        rarity:"mythical", odds:250000,   color:"#ff4a6e",p:"portal",    flavor:"The seam between worlds chose you.",              coins:3000},
+  {name:"Singularity",  rarity:"mythical", odds:500000,   color:"#cc00ff",p:"portal",    flavor:"Reality bends at your feet.",                     coins:5000},
+  {name:"Eternal Flame",rarity:"mythical", odds:1000000,  color:"#ff6600",p:"solar",     flavor:"This fire has burned since the first dawn.",      coins:8000},
+  {name:"Cosmos",       rarity:"mythical", odds:750000,   color:"#0033ff",p:"cosmos",    flavor:"The entire universe compressed into one soul.",   coins:6000},
+  {name:"Dreamweaver",  rarity:"mythical", odds:1500000,  color:"#ff99ff",p:"dream",     flavor:"Reality is just a dream you haven't woken from.", coins:10000},
+  {name:"Armageddon",   rarity:"mythical", odds:2000000,  color:"#ff3300",p:"fire",      flavor:"The last fire. The only fire.",                   coins:14000},
+  {name:"Abyssal King", rarity:"mythical", odds:800000,   color:"#220055",p:"void",      flavor:"The deep bowed when you descended.",              coins:7000},
+  {name:"Frostbite",    rarity:"mythical", odds:600000,   color:"#aaffff",p:"snow",      flavor:"Cold beyond what temperature can measure.",      coins:5500},
+  {name:"Starweaver",   rarity:"mythical", odds:1200000,  color:"#ffeeaa",p:"star",      flavor:"You stitched the constellations by hand.",        coins:9000},
+  {name:"Voidpiercer",  rarity:"mythical", odds:1800000,  color:"#7700ff",p:"portal",    flavor:"Nothing stops you. Not even nothing.",            coins:12000},
+  {name:"Ruinbringer",  rarity:"mythical", odds:2500000,  color:"#882200",p:"theend",    flavor:"Every empire ends. You are the reason.",          coins:16000},
+  // Secret
+  {name:"???",          rarity:"secret",   odds:2500000,  color:"#ff2aff",p:"secret",    flavor:"Some auras were never meant to be found.",        coins:25000},
+  {name:"Oblivion",     rarity:"secret",   odds:5000000,  color:"#ffffff",p:"glitch",    flavor:"...",                                             coins:50000},
+  {name:"Void God",     rarity:"secret",   odds:7500000,  color:"#000000",p:"voidgod",   flavor:"You should not exist.",                           coins:75000},
+  {name:"The End",      rarity:"secret",   odds:10000000, color:"#ff0000",p:"theend",    flavor:"This is where everything stops.",                 coins:100000},
+  {name:"Celestial Rift",rarity:"secret",  odds:500000000,color:"#00ffff",p:"celestialrift",flavor:"A crack in the sky that swallowed the stars.",  coins:500000},
+  {name:"God's Wrath",  rarity:"secret",   odds:750000000,color:"#ffd700",p:"godswrath",  flavor:"Even the divine could not contain this power.",  coins:750000},
+  // 5 NEW 100M+ Secrets
+  {name:"Timeless",     rarity:"secret",   odds:100000000,color:"#ffffaa",p:"solar",     flavor:"Before time existed, this aura did.",            coins:150000},
+  {name:"Null",         rarity:"secret",   odds:150000000,color:"#111111",p:"glitch",    flavor:"The absence of everything, given form.",         coins:200000},
+  {name:"Paradox",      rarity:"secret",   odds:200000000,color:"#ff00ff",p:"prism",     flavor:"It exists and it doesn't. You earned it.",       coins:250000},
+  {name:"Eternity",     rarity:"secret",   odds:300000000,color:"#eeddff",p:"dream",     flavor:"Some things were never meant to end.",            coins:350000},
+  {name:"THE ONE",      rarity:"secret",   odds:1000000000,color:"#ffffff",p:"voidgod",  flavor:"There is only one. You have it.",                 coins:1000000},
+];
+const RORD=["common","uncommon","rare","epic","legendary","mythical","secret"];
+const RLBL={common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legendary:"Legendary",mythical:"Mythical",secret:"Secret"};
+const SELL_MULT={common:0.5,uncommon:2,rare:8,epic:30,legendary:150,mythical:800,secret:5000};
+
+// Multi-roll upgrades in the shop
+const MULTI_ROLLS=[
+  {id:"mr2", name:"Double Roll", icon:"🎲", desc:"Permanently unlock rolling 2 at once.", price:100,  rolls:2,  cat:"Multi-Roll Upgrades"},
+  {id:"mr5", name:"Penta Roll",  icon:"🌀", desc:"Permanently unlock rolling 5 at once.", price:500,  rolls:5,  cat:"Multi-Roll Upgrades"},
+  {id:"mr10",name:"Deca Roll",   icon:"💫", desc:"Permanently unlock rolling 10 at once.",price:1500, rolls:10, cat:"Multi-Roll Upgrades"},
+  {id:"mr50",name:"Mega Roll",   icon:"⚡", desc:"Permanently unlock rolling 50 at once.",price:8000, rolls:50, cat:"Multi-Roll Upgrades"},
+];
+// Repeatable luck multiplier — much harder now, starts at 200 coins, scales x1.65
+const LUCK_MULT_BASE_PRICE = 200;
+const LUCK_MULT_SCALE = 1.65;
+function luckMultPrice(level){return Math.floor(LUCK_MULT_BASE_PRICE * Math.pow(LUCK_MULT_SCALE, level));}
+
+// ── CRAFTING RECIPES ──────────────────────────────────────────────────────
+const CRAFT_RECIPES=[
+  {id:"c_charm",   name:"Lucky Charm",    icon:"🍀", luck:0.3,  req:[{rarity:"common",   count:15}]},
+  {id:"c_stone",   name:"Fortune Stone",  icon:"💎", luck:0.8,  req:[{rarity:"uncommon", count:12}]},
+  {id:"c_rune",    name:"Astral Rune",    icon:"🔮", luck:2.0,  req:[{rarity:"rare",     count:8}]},
+  {id:"c_shard",   name:"Divine Shard",   icon:"✨", luck:4.0,  req:[{rarity:"epic",     count:6}]},
+  {id:"c_core",    name:"Omega Core",     icon:"⚛️", luck:8.0,  req:[{rarity:"legendary",count:5}]},
+  {id:"c_nexus",   name:"Nexus Fragment", icon:"🌌", luck:18.0, req:[{rarity:"mythical", count:4}]},
+  {id:"c_oblivion",name:"Oblivion Shard", icon:"💀", luck:45.0, req:[{rarity:"secret",   count:2}]},
+  {id:"c_prism",   name:"Luck Prism",     icon:"🔷", luck:2.5,  req:[{rarity:"uncommon", count:8},{rarity:"rare",count:3}]},
+  {id:"c_crown",   name:"Fate Crown",     icon:"👑", luck:7.0,  req:[{rarity:"rare",     count:5},{rarity:"epic",count:2}]},
+  {id:"c_star",    name:"Star Catalyst",  icon:"⭐", luck:14.0, req:[{rarity:"epic",     count:4},{rarity:"legendary",count:2}]},
+  {id:"c_veil",    name:"Fate Veil",      icon:"🌫️", luck:3.5,  req:[{rarity:"rare",     count:10}]},
+  {id:"c_eclipse", name:"Eclipse Lens",   icon:"🌑", luck:6.0,  req:[{rarity:"epic",     count:3},{rarity:"rare",count:4}]},
+  {id:"c_void",    name:"Void Crystal",   icon:"🔵", luck:11.0, req:[{rarity:"legendary",count:3},{rarity:"rare",count:3}]},
+  {id:"c_radiant", name:"Radiant Core",   icon:"💥", luck:25.0, req:[{rarity:"legendary",count:4},{rarity:"mythical",count:2}]},
+  {id:"c_essence", name:"Aura Essence",   icon:"🌀", luck:50.0, req:[{rarity:"mythical", count:3},{rarity:"secret",count:1}]},
+  {id:"c_chaos",   name:"Chaos Shard",    icon:"⚡", luck:1.5,  req:[{rarity:"common",   count:30},{rarity:"uncommon",count:5}]},
+  {id:"c_angel",   name:"Angel Feather",  icon:"🪶", luck:5.0,  req:[{rarity:"uncommon", count:6},{rarity:"epic",count:1}]},
+  // ── Extra mid-tier combos ──────────────────────────────────────────────
+  {id:"c_gale",     name:"Gale Crystal",     icon:"💨",  luck:1.5,   req:[{rarity:"common",    count:8},{rarity:"uncommon",  count:3}]},
+  {id:"c_emberc",   name:"Ember Core",       icon:"🔥",  luck:2.0,   req:[{rarity:"common",    count:6},{rarity:"uncommon",  count:4}]},
+  {id:"c_tideg",    name:"Tide Gem",         icon:"🌊",  luck:3.5,   req:[{rarity:"uncommon",  count:6},{rarity:"rare",      count:2}]},
+  {id:"c_plague",   name:"Plague Vial",      icon:"☠️",  luck:4.5,   req:[{rarity:"rare",      count:4},{rarity:"uncommon",  count:5}]},
+  {id:"c_col",      name:"Colossus Plate",   icon:"🗿",  luck:7.0,   req:[{rarity:"rare",      count:4},{rarity:"epic",      count:1}]},
+  {id:"c_abyss2",   name:"Abyss Core",       icon:"🕳️",  luck:9.0,   req:[{rarity:"epic",      count:3},{rarity:"rare",      count:3}]},
+  {id:"c_solarf",   name:"Solar Fragment",   icon:"☀️",  luck:12.0,  req:[{rarity:"epic",      count:2},{rarity:"legendary", count:1}]},
+  {id:"c_levia",    name:"Leviathan Scale",  icon:"🐉",  luck:18.0,  req:[{rarity:"legendary", count:2},{rarity:"epic",      count:3}]},
+  {id:"c_dream2",   name:"Dream Shard",      icon:"💤",  luck:22.0,  req:[{rarity:"legendary", count:2},{rarity:"mythical",  count:1}]},
+  {id:"c_nexus2",   name:"Nexus Core",       icon:"🌐",  luck:30.0,  req:[{rarity:"mythical",  count:2},{rarity:"legendary", count:2}]},
+  {id:"c_singul",   name:"Singularity Dust", icon:"🌌",  luck:45.0,  req:[{rarity:"mythical",  count:2},{rarity:"secret",    count:1}]},
+  {id:"c_godcore",  name:"God Core",         icon:"⚡",  luck:80.0,  req:[{rarity:"secret",    count:1},{rarity:"mythical",  count:4}]},
+  {id:"c_trinity",  name:"Trinity Shard",    icon:"🔱",  luck:6.0,   req:[{rarity:"rare",      count:3},{rarity:"uncommon",  count:4},{rarity:"common",count:10}]},
+  {id:"c_starcrown",name:"Star Crown",       icon:"👑",  luck:16.0,  req:[{rarity:"epic",      count:2},{rarity:"rare",      count:4},{rarity:"uncommon",count:5}]},
+];
+
+const SHOP_ITEMS=[
+  {id:"ps",    name:"Luck Potion",   icon:"🧪",desc:"x2 luck for 15 rolls.",          price:30,   type:"temp",  eff:{mult:2,rl:15}, cat:"Potions",stack:true},
+  {id:"pm",    name:"Grand Potion",  icon:"⚗️",desc:"x3 luck for 30 rolls.",          price:90,   type:"temp",  eff:{mult:3,rl:30}, cat:"Potions",stack:true},
+  {id:"pl",    name:"Mega Potion",   icon:"🫧",desc:"x5 luck for 60 rolls.",          price:280,  type:"temp",  eff:{mult:5,rl:60}, cat:"Potions",stack:true},
+  {id:"pxl",   name:"Godly Potion",  icon:"🌟",desc:"x10 luck for 120 rolls.",        price:1500, type:"temp",  eff:{mult:10,rl:120},cat:"Potions",stack:true},
+  {id:"pdark", name:"Dark Elixir",   icon:"🖤",desc:"x15 luck for 75 rolls.",         price:3500, type:"temp",  eff:{mult:15,rl:75}, cat:"Potions",stack:true},
+  {id:"pstorm",name:"Storm Brew",    icon:"⛈️",desc:"x7 luck for 200 rolls.",         price:2200, type:"temp",  eff:{mult:7,rl:200}, cat:"Potions",stack:true},
+  {id:"pblood",name:"Blood Potion",  icon:"🩸",desc:"x20 luck for 40 rolls.",         price:5000, type:"temp",  eff:{mult:20,rl:40}, cat:"Potions",stack:true},
+  {id:"pcosmic",name:"Cosmic Brew",  icon:"🌌",desc:"x25 luck for 50 rolls.",         price:12000,type:"temp",  eff:{mult:25,rl:50}, cat:"Potions",stack:true},
+  {id:"pdream",name:"Dream Tonic",   icon:"💭",desc:"x4 luck for 500 rolls.",         price:4000, type:"temp",  eff:{mult:4,rl:500}, cat:"Potions",stack:true},
+  {id:"cring", name:"Coin Ring",     icon:"💍",desc:"Earn 2x coins from every roll.", price:200,  type:"passive",eff:{coinMult:2},  cat:"Coin Boosters"},
+  {id:"ccrown",name:"Coin Crown",    icon:"👑",desc:"Earn 5x coins from every roll.", price:1000, type:"passive",eff:{coinMult:5},  cat:"Coin Boosters"},
+  {id:"cthrone",name:"Coin Throne",  icon:"🏆",desc:"Earn 10x coins from every roll.",price:8000, type:"passive",eff:{coinMult:10}, cat:"Coin Boosters"},
+  ...MULTI_ROLLS.map(m=>({...m,type:"multiroll"})),
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let coins=0,rolls=0,baseLuck=1,tempBoosts=[],owned={},coinMult=1,luckMultLevel=0;
+let bestRarity=null,rolling=false,autoTimer=null,autoOn=false,streak=0;
+let currentRollCount=1;
+let equippedAura=null;
+let inventory=[]; // [{name,color,rarity,baseCoins,count,fav}]
+let favorites=new Set();
+let invTab='all';
+let forcedNextAura=null;
+
+// ── SAVE / LOAD ────────────────────────────────────────────────────────────
+const SAVE_KEY='joesrng_save_v1';
+let _saveIndicatorTimer=null;
+
+function saveGame(){
+  try{
+    const data={
+      coins,rolls,baseLuck,coinMult,luckMultLevel,
+      owned,inventory,
+      equippedAura:equippedAura?equippedAura.name:null,
+      redeemedCodes:[...redeemedCodes],
+      bestRarity,
+      ts:Date.now()
+    };
+    localStorage.setItem(SAVE_KEY,JSON.stringify(data));
+    showSaveIndicator();
+  }catch(e){console.warn('Save failed:',e);}
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    coins=d.coins||0;
+    rolls=d.rolls||0;
+    baseLuck=d.baseLuck||1;
+    coinMult=d.coinMult||1;
+    luckMultLevel=d.luckMultLevel||0;
+    owned=d.owned||{};
+    inventory=d.inventory||[];
+    bestRarity=d.bestRarity||null;
+    redeemedCodes=new Set(d.redeemedCodes||[]);
+    // restore passive effects from owned items
+    for(const id of Object.keys(owned)){
+      const it=SHOP_ITEMS.find(i=>i.id===id);
+      if(it&&it.type==='passive')applyPassive(it);
+    }
+    // restore coin multiplier to actual max owned
+    const coinItems=[{id:'cthrone',mult:10},{id:'ccrown',mult:5},{id:'cring',mult:2}];
+    for(const ci of coinItems){if(owned[ci.id]){coinMult=Math.max(coinMult,ci.mult);break;}}
+    // restore equipped aura display
+    if(d.equippedAura){
+      const inv=inventory.find(i=>i.name===d.equippedAura);
+      if(inv)equippedAura={name:inv.name,color:inv.color,rarity:inv.rarity};
+      const auraObj=AURAS.find(a=>a.name===d.equippedAura);
+      if(auraObj){curAura=auraObj;spawnParts(auraObj);}
+      const banner=document.getElementById('equippedBanner');
+      if(banner&&equippedAura){
+        banner.classList.add('show');
+        document.getElementById('eqName').textContent=equippedAura.name;
+        document.getElementById('eqName').style.color=equippedAura.color;
+        document.getElementById('eqDot').style.background=equippedAura.color;
+      }
+    }
+    // unlock roll buttons that were purchased
+    for(const mr of MULTI_ROLLS){if(owned[mr.id])unlockRollBtn(mr.rolls);}
+    return true;
+  }catch(e){console.warn('Load failed:',e);return false;}
+}
+
+function showSaveIndicator(){
+  const el=document.getElementById('saveIndicator');
+  if(!el)return;
+  el.classList.add('visible');
+  clearTimeout(_saveIndicatorTimer);
+  _saveIndicatorTimer=setTimeout(()=>el.classList.remove('visible'),1800);
+}
+
+function resetSave(){
+  if(!confirm('Reset ALL progress? This cannot be undone!'))return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+function totalLuck(){let l=baseLuck;for(const b of tempBoosts)l*=b.mult;return parseFloat(l.toFixed(2));}
+// Luck reduces effective odds per rarity. Rarer tiers have a higher power so they
+// benefit dramatically more. At x10 rares are common. At x50 legendaries show up often.
+const RARITY_POWER={common:0.005,uncommon:0.04,rare:0.12,epic:0.22,legendary:0.35,mythical:0.5,secret:0.7};
+function rollAura(luck){
+  const w=AURAS.map(a=>{
+    const eff=Math.max(1, a.odds / Math.pow(luck, RARITY_POWER[a.rarity]));
+    return 1/eff;
+  });
+  const t=w.reduce((s,x)=>s+x,0);
+  let r=Math.random()*t;
+  for(let i=0;i<AURAS.length;i++){r-=w[i];if(r<=0)return AURAS[i];}
+  return AURAS[0];
+}
+
+// ── CANVAS ────────────────────────────────────────────────────────────────
+const canvas=document.getElementById('auraCanvas'),ctx=canvas.getContext('2d');
+let parts=[],curAura=null,fr=0,isRolling=false;
+function resize(){const s=document.getElementById('stage');canvas.width=s.offsetWidth;canvas.height=s.offsetHeight;}
+
+class P{
+  constructor(type,color,cx,cy,w,h){Object.assign(this,{type,color,cx,cy,w,h});this.reset();}
+  reset(){
+    const t=this.type;
+    this.x=this.cx+(Math.random()-.5)*this.w*.6;this.y=this.cy+(Math.random()-.5)*this.h*.6;
+    this.a=Math.random()*.7+.1;this.s=Math.random()*4+1;
+    this.vx=(Math.random()-.5)*.8;this.vy=-Math.random()*1.5-.5;
+    this.life=Math.random()*80+40;this.ml=this.life;
+    if(t==='fire'){this.vy=-Math.random()*2-1;this.s=Math.random()*6+2;}
+    if(t==='snow'){this.vy=Math.random()*.5+.2;this.vx=(Math.random()-.5)*.5;this.s=Math.random()*3+1;}
+    if(t==='leaf'){this.vy=Math.random()*.4+.1;this.vx=(Math.random()-.5);this.rot=Math.random()*Math.PI*2;this.rv=(Math.random()-.5)*.1;}
+    if(t==='star'){this.s=Math.random()*2.5+.5;this.vy=(Math.random()-.5)*.3;this.vx=(Math.random()-.5)*.3;this.tw=Math.random()*Math.PI*2;}
+    if(t==='bubble'){this.vy=-Math.random()*.6-.2;this.s=Math.random()*8+3;this.wb=Math.random()*Math.PI*2;}
+    if(t==='void'){this.s=Math.random()*5+2;this.spiral=Math.random()*Math.PI*2;this.sr=Math.random()*30+10;}
+    if(t==='lightning'){this.life=Math.random()*20+5;this.ml=this.life;this.len=Math.random()*40+20;}
+    if(t==='dust'||t==='drift'){this.vy=-(Math.random()*.4+.1);this.vx=(Math.random()-.5)*.8;}
+    if(t==='solar'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*60+20;this.sp=Math.random()*.02+.005;this.s=Math.random()*3+1;}
+    if(t==='aurora'){this.x=Math.random()*this.w;this.y=this.cy-this.h*.22;this.vx=(Math.random()-.5)*.3;this.wv=Math.random()*Math.PI*2;this.wa=Math.random()*20+5;this.wf=Math.random()*.02+.01;}
+    if(t==='portal'||t==='secret'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.35;this.sp=(Math.random()-.5)*.03+(t==='secret'?.015:0);this.s=Math.random()*3+.5;}
+    if(t==='toxic'){this.vy=-Math.random()*.4-.1;this.vx=(Math.random()-.5)*.6;this.s=Math.random()*5+2;this.wb=Math.random()*Math.PI*2;}
+    if(t==='prism'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.3;this.sp=(Math.random()-.5)*.04;this.s=Math.random()*3+1;this.hue=Math.random()*360;}
+    if(t==='eclipse'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.4;this.sp=Math.random()*.015+.005;this.s=Math.random()*2+.5;}
+    if(t==='phoenix'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*50+10;this.sp=Math.random()*.05+.02;this.s=Math.random()*5+2;this.hue=Math.random()*40+10;}
+    if(t==='cosmos'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.45;this.sp=(Math.random()-.5)*.02;this.s=Math.random()*2+.3;this.tw=Math.random()*Math.PI*2;}
+    if(t==='dream'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.38;this.sp=(Math.random()-.5)*.025;this.s=Math.random()*4+1;this.hue=Math.random()*60+290;}
+    if(t==='glitch'){this.x=Math.random()*this.w;this.y=Math.random()*this.h;this.s=Math.random()*12+2;this.life=Math.random()*8+2;this.ml=this.life;}
+    if(t==='voidgod'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.5;this.sp=(Math.random()-.5)*.008;this.s=Math.random()*3+1;this.pulse=Math.random()*Math.PI*2;}
+    if(t==='theend'){this.x=Math.random()*this.w;this.y=Math.random()*this.h;this.vx=(Math.random()-.5)*3;this.vy=(Math.random()-.5)*3;this.s=Math.random()*3+.5;this.life=Math.random()*30+10;this.ml=this.life;}
+    if(t==='celestialrift'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.4;this.sp=(Math.random()-.5)*.035;this.s=Math.random()*4+.5;this.hue=Math.random()*60+170;this.pulse=Math.random()*Math.PI*2;this.layer=Math.floor(Math.random()*3);}
+    if(t==='godswrath'){this.ang=Math.random()*Math.PI*2;this.r=Math.random()*this.w*.45;this.sp=Math.random()*.06+.02;this.s=Math.random()*5+1;this.hue=Math.random()*40+30;this.trail=[];this.pulse=Math.random()*Math.PI*2;}
+  }
+  upd(){
+    const t=this.type;
+    if(t==='solar'){this.ang+=this.sp;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    else if(t==='portal'||t==='secret'){this.ang+=this.sp;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    else if(t==='aurora'){this.wv+=this.wf;this.x+=this.vx;this.y=this.cy-this.h*.22+Math.sin(this.wv)*this.wa;if(this.x<0||this.x>this.w)this.vx*=-1;}
+    else if(t==='void'){this.spiral+=.03;this.x=this.cx+Math.cos(this.spiral)*this.sr;this.y=this.cy+Math.sin(this.spiral)*this.sr;this.sr*=.99;}
+    else if(t==='bubble'){this.wb+=.05;this.x+=Math.sin(this.wb)*.5+this.vx;this.y+=this.vy;}
+    else if(t==='leaf'){this.rot+=this.rv;this.x+=this.vx;this.y+=this.vy;}
+    else if(t==='toxic'){this.wb+=.03;this.x+=Math.sin(this.wb)*.4+this.vx;this.y+=this.vy;}
+    else if(t==='prism'){this.ang+=this.sp;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;this.hue=(this.hue+2)%360;}
+    else if(t==='eclipse'){this.ang+=this.sp;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    else if(t==='phoenix'){this.ang+=this.sp;this.r*=.998;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;this.hue=(this.hue+1)%60+10;}
+    else if(t==='cosmos'){this.ang+=this.sp;this.tw+=.04;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    else if(t==='dream'){this.ang+=this.sp;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;this.hue=(this.hue+.5)%360;}
+    else if(t==='voidgod'){this.ang+=this.sp;this.pulse+=.05;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    else if(t==='theend'||t==='glitch'){this.x+=this.vx||0;this.y+=this.vy||0;}
+    else if(t==='celestialrift'){this.ang+=this.sp;this.pulse+=.04;this.x=this.cx+Math.cos(this.ang)*this.r*(1+Math.sin(this.pulse)*.08);this.y=this.cy+Math.sin(this.ang)*this.r*(1+Math.cos(this.pulse)*.08);this.hue=(this.hue+1.5)%360;}
+    else if(t==='godswrath'){this.ang+=this.sp;this.pulse+=.06;this.trail.push({x:this.x,y:this.y});if(this.trail.length>6)this.trail.shift();this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;this.hue=(this.hue+2)%360;}
+    else{this.x+=this.vx;this.y+=this.vy;}
+    this.life--;
+    const pg=this.life/this.ml;
+    this.a=t==='star'?(0.3+Math.sin(this.tw||0)*.3)*pg:pg*.8;
+    if(this.life<=0)this.reset();
+  }
+  draw(){
+    const t=this.type,c=this.color;
+    ctx.save();ctx.globalAlpha=Math.max(0,this.a);
+    // Set shadow once per particle (cheaper than resetting every branch)
+    ctx.shadowColor=c;
+    if(t==='lightning'){
+      ctx.shadowBlur=6;ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.beginPath();
+      let lx=this.x,ly=this.y;ctx.moveTo(lx,ly);
+      for(let i=0;i<4;i++){lx+=(Math.random()-.5)*12;ly+=this.len/4;ctx.lineTo(lx,ly);}ctx.stroke();
+    }else if(t==='bubble'){
+      ctx.shadowBlur=5;ctx.strokeStyle=c;ctx.lineWidth=1;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.stroke();
+    }else if(t==='leaf'){
+      ctx.shadowBlur=3;ctx.translate(this.x,this.y);ctx.rotate(this.rot);ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,this.s*2,this.s,0,0,Math.PI*2);ctx.fill();
+    }else if(t==='fire'){
+      ctx.shadowBlur=8;
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.s);
+      g.addColorStop(0,'#fff');g.addColorStop(.3,c);g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='toxic'){
+      ctx.shadowBlur=6;ctx.strokeStyle=c;ctx.lineWidth=1;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=c+'44';ctx.fill();
+    }else if(t==='prism'){
+      const pc=`hsl(${this.hue},100%,65%)`;ctx.shadowColor=pc;ctx.shadowBlur=8;ctx.fillStyle=pc;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='eclipse'){
+      ctx.shadowColor='#aa44ff';ctx.shadowBlur=10;ctx.fillStyle=c;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='phoenix'){
+      const pc=`hsl(${this.hue},100%,60%)`;ctx.shadowColor=pc;ctx.shadowBlur=10;
+      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.s);
+      g.addColorStop(0,'#fff');g.addColorStop(.4,pc);g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='cosmos'){
+      ctx.shadowBlur=6;ctx.fillStyle=c;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='dream'){
+      const pc=`hsl(${this.hue},80%,70%)`;ctx.shadowColor=pc;ctx.shadowBlur=7;ctx.fillStyle=pc;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='glitch'){
+      ctx.shadowBlur=0;ctx.fillStyle=Math.random()>.5?'#fff':'#ff0000';
+      ctx.fillRect(this.x,this.y,this.s,this.s*.3);
+    }else if(t==='voidgod'){
+      const pulse=.5+Math.sin(this.pulse)*.5;
+      ctx.shadowColor='#8800ff';ctx.shadowBlur=8;
+      ctx.fillStyle=`rgba(0,0,0,${pulse})`;ctx.strokeStyle='#440088';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }else if(t==='theend'){
+      ctx.shadowBlur=5;ctx.fillStyle=c;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else if(t==='celestialrift'){
+      const pc=`hsl(${this.hue},100%,70%)`;ctx.shadowColor=pc;
+      if(this.layer===0){
+        ctx.shadowBlur=12;ctx.strokeStyle=pc;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(this.x-this.s*2,this.y);ctx.lineTo(this.x+this.s*2,this.y);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(this.x,this.y-this.s*2);ctx.lineTo(this.x,this.y+this.s*2);ctx.stroke();
+      } else {
+        ctx.shadowBlur=14;
+        const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.s*1.5);
+        g.addColorStop(0,'#ffffff');g.addColorStop(.4,pc);g.addColorStop(1,'transparent');
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+      }
+    }else if(t==='godswrath'){
+      const pc=`hsl(${this.hue},100%,65%)`;ctx.shadowColor=pc;ctx.shadowBlur=6;
+      for(let i=0;i<this.trail.length;i++){
+        const tp=this.trail[i];
+        ctx.globalAlpha=Math.max(0,this.a*(i/this.trail.length)*0.5);
+        ctx.fillStyle=`hsl(${(this.hue+i*8)%360},100%,55%)`;
+        ctx.beginPath();ctx.arc(tp.x,tp.y,this.s*(i/this.trail.length),0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=Math.max(0,this.a);ctx.shadowBlur=14;
+      const g2=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.s*2);
+      g2.addColorStop(0,'#ffffff');g2.addColorStop(.3,pc);g2.addColorStop(1,'transparent');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }else{
+      ctx.shadowBlur=t==='star'?7:t==='secret'?10:4;ctx.fillStyle=c;ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function spawnParts(aura){
+  parts=[];
+  const N={secret:100,mythical:80,legendary:60,epic:48,rare:36,uncommon:28}[aura.rarity]||22;
+  const cx=canvas.width/2,cy=canvas.height/2;
+  for(let i=0;i<N;i++)parts.push(new P(aura.p,aura.color,cx,cy,canvas.width,canvas.height));
+}
+function ha(hex,a){
+  const r=parseInt(hex.slice(1,3)||'80',16),g=parseInt(hex.slice(3,5)||'80',16),b=parseInt(hex.slice(5,7)||'80',16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function drawBg(aura){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!aura)return;
+  const rc=aura.color;
+  const ri=RORD.indexOf(aura.rarity);
+  // ambient glow — bigger and more intense for rarer auras
+  const bgR=Math.min(0.08+ri*0.04,0.32);
+  const bgMid=Math.min(0.03+ri*0.02,0.14);
+  const bgRadius=canvas.width*(0.5+ri*0.06);
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,bgRadius);
+  g.addColorStop(0,ha(rc,bgR));g.addColorStop(.5,ha(rc,bgMid));g.addColorStop(1,'transparent');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // for mythical+ add a second sweeping color ring
+  if(ri>=5){
+    const g2=ctx.createRadialGradient(cx,cy,canvas.width*.2,cx,cy,canvas.width*.55);
+    g2.addColorStop(0,'transparent');g2.addColorStop(.5,ha(rc,.06));g2.addColorStop(1,'transparent');
+    ctx.fillStyle=g2;ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  // central orb — scales with rarity
+  const orbR=44+ri*6;
+  const blur=30+ri*12;
+  const og=ctx.createRadialGradient(cx,cy,0,cx,cy,orbR);
+  og.addColorStop(0,ha('#fff',.95));og.addColorStop(.25,ha(rc,.9));og.addColorStop(.6,ha(rc,.4));og.addColorStop(1,'transparent');
+  ctx.shadowColor=rc;ctx.shadowBlur=blur;ctx.fillStyle=og;ctx.beginPath();ctx.arc(cx,cy,orbR,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  // extra outer ring for secret tier
+  if(ri>=6){
+    ctx.shadowColor=rc;ctx.shadowBlur=60;ctx.strokeStyle=ha(rc,.3);ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(cx,cy,orbR+20,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+  }
+  // Celestial Rift: animated rift lines radiating from center
+  if(aura.p==='celestialrift'){
+    const t=fr*.025;
+    for(let i=0;i<8;i++){
+      const ang=i/8*Math.PI*2+t;const len=canvas.width*.35+Math.sin(t*2+i)*20;
+      const grl=ctx.createLinearGradient(cx,cy,cx+Math.cos(ang)*len,cy+Math.sin(ang)*len);
+      grl.addColorStop(0,`hsla(${180+i*15},100%,80%,.5)`);grl.addColorStop(1,'transparent');
+      ctx.strokeStyle=grl;ctx.lineWidth=1.5;ctx.shadowColor='#00ffff';ctx.shadowBlur=10;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ang)*len,cy+Math.sin(ang)*len);ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+  }
+  // God's Wrath: pulsing divine rings with lightning arcs
+  if(aura.p==='godswrath'){
+    const t=fr*.04;
+    for(let ring=0;ring<3;ring++){
+      const rr=60+ring*30+Math.sin(t+ring)*(8+ring*3);
+      ctx.strokeStyle=`hsla(${45+ring*15},100%,65%,${.2+ring*.05})`;
+      ctx.lineWidth=1+ring*.5;ctx.shadowColor='#ffd700';ctx.shadowBlur=15+ring*5;
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.stroke();
+    }
+    // arc lightning flashes
+    if(fr%6<3){
+      const arc1=Math.random()*Math.PI*2;const arc2=arc1+.4;
+      ctx.strokeStyle='rgba(255,220,50,.7)';ctx.lineWidth=1;ctx.shadowColor='#fff';ctx.shadowBlur=12;
+      ctx.beginPath();ctx.moveTo(cx+Math.cos(arc1)*55,cy+Math.sin(arc1)*55);
+      ctx.lineTo(cx+(Math.random()-.5)*20,cy+(Math.random()-.5)*20);
+      ctx.lineTo(cx+Math.cos(arc2)*55,cy+Math.sin(arc2)*55);ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+  }
+}
+function animate(){
+  requestAnimationFrame(animate);fr++;
+  if(fr%2!==0)return; // ~30fps — halves draw calls
+  if(isRolling){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const f=AURAS[Math.floor(fr/6)%AURAS.length];
+    const cx=canvas.width/2,cy=canvas.height/2;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,canvas.width*.5);
+    g.addColorStop(0,ha(f.color,.26));g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  drawBg(curAura);
+  for(const p of parts){p.upd();p.draw();}
+}
+
+// ── CUTSCENE ENGINE ────────────────────────────────────────────────────────
+const csCanvas=document.getElementById('cs-canvas');
+const csCtx=csCanvas.getContext('2d');
+let csFrame=0,csAnimId=null,csAura=null,csPhase=0,csParticles=[];
+
+function csResize(){csCanvas.width=window.innerWidth;csCanvas.height=window.innerHeight;}
+window.addEventListener('resize',csResize);csResize();
+
+class CSParticle{
+  constructor(color,cx,cy,type){
+    this.color=color;this.cx=cx;this.cy=cy;this.type=type;
+    this.reset(true);
+  }
+  reset(born){
+    this.ang=Math.random()*Math.PI*2;
+    this.r=born?Math.random()*30:Math.random()*Math.min(csCanvas.width,csCanvas.height)*.45;
+    this.speed=Math.random()*.018+.006;
+    this.s=Math.random()*4+1;
+    this.a=Math.random()*.9+.1;
+    this.life=Math.random()*200+80;this.ml=this.life;
+    this.vr=born?Math.random()*8+4:0;
+    if(this.type==='shard'){this.ang2=Math.random()*Math.PI*2;this.vx=Math.cos(this.ang2)*(Math.random()*4+1);this.vy=Math.sin(this.ang2)*(Math.random()*4+1);}
+  }
+  upd(){
+    if(this.type==='shard'){this.x=this.cx+this.vx*(this.ml-this.life);this.y=this.cy+this.vy*(this.ml-this.life)+.5*(this.ml-this.life)*(this.ml-this.life)*.02;}
+    else{this.ang+=this.speed;this.r+=this.vr*.1;this.vr*=.96;this.x=this.cx+Math.cos(this.ang)*this.r;this.y=this.cy+Math.sin(this.ang)*this.r;}
+    this.life--;
+    this.a=(this.life/this.ml)*.9;
+    if(this.life<=0)this.reset(false);
+  }
+  draw(){
+    csCtx.save();csCtx.globalAlpha=Math.max(0,this.a);
+    csCtx.fillStyle=this.color;csCtx.shadowColor=this.color;csCtx.shadowBlur=this.s*3;
+    csCtx.beginPath();csCtx.arc(this.x,this.y,this.s,0,Math.PI*2);csCtx.fill();
+    csCtx.restore();
+  }
+}
+
+function csAnimateLoop(){
+  csAnimId=requestAnimationFrame(csAnimateLoop);
+  csFrame++;
+  const W=csCanvas.width,H=csCanvas.height,cx=W/2,cy=H/2;
+  csCtx.clearRect(0,0,W,H);
+  if(!csAura)return;
+  const rc=csAura.color;
+  const ri=RORD.indexOf(csAura.rarity);
+
+  // Phase 0: shockwave burst
+  if(csPhase===0){
+    const prog=Math.min(csFrame/25,1);
+    const shockR=prog*Math.max(W,H)*.8;
+    const shockAlpha=(1-prog)*.6;
+    csCtx.strokeStyle=rc;csCtx.lineWidth=3*(1-prog)+1;csCtx.globalAlpha=shockAlpha;
+    csCtx.shadowColor=rc;csCtx.shadowBlur=30;
+    csCtx.beginPath();csCtx.arc(cx,cy,shockR,0,Math.PI*2);csCtx.stroke();
+    if(ri>=3){// second ring for epic+
+      csCtx.globalAlpha=shockAlpha*.6;
+      csCtx.beginPath();csCtx.arc(cx,cy,shockR*.7,0,Math.PI*2);csCtx.stroke();
+    }
+    csCtx.globalAlpha=1;csCtx.shadowBlur=0;
+    if(csFrame>=25)csPhase=1;
+  }
+
+  // Phase 1+: orb + particles + scan lines for rare+
+  if(csPhase>=1){
+    const fadeIn=Math.min((csFrame-25)/20,1);
+
+    // scan lines (legendary+)
+    if(ri>=4){
+      for(let i=0;i<H;i+=4){
+        csCtx.globalAlpha=.04*fadeIn;csCtx.fillStyle=rc;
+        csCtx.fillRect(0,i,W,2);
+      }
+      csCtx.globalAlpha=1;
+    }
+
+    // particles
+    for(const p of csParticles){p.upd();p.draw();}
+
+    // pulsing orb
+    const pulse=1+Math.sin(csFrame*.08)*.12;
+    const orbR=(60+ri*14)*pulse*fadeIn;
+    const grd=csCtx.createRadialGradient(cx,cy,0,cx,cy,orbR);
+    grd.addColorStop(0,'rgba(255,255,255,0.95)');
+    grd.addColorStop(.3,ha(rc,.9));
+    grd.addColorStop(.7,ha(rc,.4));
+    grd.addColorStop(1,'transparent');
+    csCtx.shadowColor=rc;csCtx.shadowBlur=60+ri*15;
+    csCtx.fillStyle=grd;csCtx.beginPath();csCtx.arc(cx,cy,orbR,0,Math.PI*2);csCtx.fill();
+
+    // outer ring(s)
+    csCtx.strokeStyle=ha(rc,.4+Math.sin(csFrame*.06)*.2);
+    csCtx.lineWidth=1.5;csCtx.shadowBlur=20;
+    csCtx.beginPath();csCtx.arc(cx,cy,orbR+15+Math.sin(csFrame*.05)*6,0,Math.PI*2);csCtx.stroke();
+    if(ri>=5){
+      csCtx.strokeStyle=ha(rc,.2);csCtx.lineWidth=1;
+      csCtx.beginPath();csCtx.arc(cx,cy,orbR+35+Math.sin(csFrame*.04+1)*8,0,Math.PI*2);csCtx.stroke();
+    }
+    csCtx.shadowBlur=0;
+
+    // ambient bg glow
+    const bg=csCtx.createRadialGradient(cx,cy,0,cx,cy,W*.7);
+    bg.addColorStop(0,ha(rc,.15*fadeIn));bg.addColorStop(1,'transparent');
+    csCtx.fillStyle=bg;csCtx.fillRect(0,0,W,H);
+
+    // glitch lines for secret
+    if(ri>=6&&csFrame%3===0){
+      const ly=Math.random()*H;csCtx.globalAlpha=.4;
+      csCtx.fillStyle=rc;csCtx.fillRect(0,ly,W,Math.random()*3+1);csCtx.globalAlpha=1;
+    }
+  }
+}
+
+function spawnCsParticles(aura){
+  csParticles=[];
+  const ri=RORD.indexOf(aura.rarity);
+  const N=12+ri*10; // was 20+ri*18 — much lighter
+  const cx=csCanvas.width/2,cy=csCanvas.height/2;
+  for(let i=0;i<N;i++){
+    const type=ri>=4?'shard':'orbit';
+    csParticles.push(new CSParticle(aura.color,cx,cy,type));
+  }
+  if(ri>=6){
+    for(let i=0;i<20;i++)csParticles.push(new CSParticle('#fff',cx,cy,'shard'));
+  }
+}
+
+// Rarity-based cutscene decision: only show cutscene for rare+ (odds >= 250)
+// Common/Uncommon skip cutscene entirely
+function shouldShowCutscene(aura){
+  return RORD.indexOf(aura.rarity)>=2; // rare and above
+}
+
+let csActive=false;
+const RARITY_CS_MIN=4; // legendary and above
+
+function showCutscene(aura,onDone){
+  csActive=true;
+  const ri=RORD.indexOf(aura.rarity);
+  const isSecret=ri>=6;
+  const cs=document.getElementById('cutscene');
+  const overlay=document.getElementById('cs-overlay');
+  const rarityEl=document.getElementById('cs-rarity');
+  const nameEl=document.getElementById('cs-name');
+  const oddsEl=document.getElementById('cs-odds');
+  const flavorEl=document.getElementById('cs-flavor');
+  const tapEl=document.getElementById('cs-tap');
+  const secretBg=document.getElementById('cs-secret-bg');
+  const secretTitle=document.getElementById('cs-secret-title');
+
+  // reset all
+  [rarityEl,nameEl,oddsEl,flavorEl,tapEl,secretTitle].forEach(el=>{el.style.opacity='0';});
+  rarityEl.style.transform='translateX(-50%) translateY(24px)';
+  nameEl.style.transform='translateX(-50%) translateY(34px)';
+  overlay.style.opacity='0';
+  secretBg.style.opacity='0';
+  csFrame=0;csPhase=0;
+
+  // fill content
+  rarityEl.textContent=RLBL[aura.rarity].toUpperCase();
+  rarityEl.style.color=aura.color;rarityEl.style.textShadow=`0 0 20px ${aura.color}`;
+  nameEl.textContent=aura.name;nameEl.style.color=aura.color;
+  oddsEl.textContent='1 in '+aura.odds.toLocaleString();
+  flavorEl.textContent=aura.flavor;
+
+  cs.classList.add('active');
+  spawnCsParticles(aura);
+  csAura=aura;
+
+  // fade in
+  requestAnimationFrame(()=>{cs.style.opacity='1';});
+  setTimeout(()=>{
+    overlay.style.opacity=String(Math.min(0.96, 0.55+ri*0.07));
+    if(isSecret)secretBg.style.opacity='1';
+  },80);
+
+  // start animation loop
+  if(csAnimId)cancelAnimationFrame(csAnimId);
+  csAnimateLoop();
+
+  // SECRET SPECIAL EFFECTS
+  if(isSecret){
+    // crackle flashes
+    let flashCount=0;
+    const crackleIv=setInterval(()=>{
+      const fl=document.getElementById('flash');
+      fl.style.background=aura.color;
+      fl.style.opacity=String(0.08+Math.random()*0.12);
+      setTimeout(()=>fl.style.opacity='0',80);
+      if(++flashCount>6)clearInterval(crackleIv);
+    },220);
+    setTimeout(()=>{secretTitle.style.opacity='1';},400);
+  }
+
+  // stagger reveals — longer for rarer
+  const d1=isSecret?1400:500+ri*80;
+  const d2=d1+(isSecret?600:400);
+  const d3=d2+(isSecret?500:300);
+  const d4=d3+300;
+  const tapD=d4+(isSecret?1200:500+ri*120);
+
+  setTimeout(()=>{rarityEl.style.opacity='1';rarityEl.style.transform='translateX(-50%) translateY(0)';},d1);
+  setTimeout(()=>{nameEl.style.opacity='1';nameEl.style.transform='translateX(-50%) translateY(0)';},d2);
+  setTimeout(()=>{oddsEl.style.opacity='1';},d3);
+  setTimeout(()=>{flavorEl.style.opacity='1';},d4);
+  setTimeout(()=>{tapEl.style.opacity='1';},tapD);
+
+  function dismiss(){
+    if(!csActive)return;
+    csActive=false;
+    cancelAnimationFrame(csAnimId);csAnimId=null;csAura=null;
+    cs.style.opacity='0';
+    secretBg.style.opacity='0';
+    setTimeout(()=>{cs.classList.remove('active');onDone();},350);
+  }
+
+  // click to dismiss (after minimum delay)
+  let ready=false;
+  setTimeout(()=>{ready=true;},tapD);
+  const handler=()=>{if(!ready)return;cs.removeEventListener('click',handler);dismiss();};
+  cs.addEventListener('click',handler);
+  // auto-dismiss
+  const autoMs=tapD+(isSecret?7000:3000+ri*500);
+  setTimeout(()=>{if(csActive&&csAura)dismiss();},autoMs);
+}
+
+
+// ── STARS (single canvas, no DOM spam)
+let starData=[];
+function makeStars(){
+  const cv=document.getElementById('starCanvas');
+  function resizeStar(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
+  resizeStar();
+  window.addEventListener('resize',resizeStar);
+  starData=[];
+  for(let i=0;i<90;i++){
+    starData.push({
+      x:Math.random(),y:Math.random(),
+      s:Math.random()*1.4+0.3,
+      base:Math.random()*0.35+0.05,
+      amp:Math.random()*0.35+0.1,
+      spd:Math.random()*0.008+0.003,
+      ph:Math.random()*Math.PI*2
+    });
+  }
+  const sx=cv.getContext('2d');
+  let sf=0;
+  (function drawStars(){
+    requestAnimationFrame(drawStars);
+    sf+=0.4;
+    sx.clearRect(0,0,cv.width,cv.height);
+    for(const st of starData){
+      const a=st.base+st.amp*(0.5+0.5*Math.sin(sf*st.spd+st.ph));
+      sx.globalAlpha=a;
+      sx.fillStyle='#fff';
+      sx.beginPath();
+      sx.arc(st.x*cv.width,st.y*cv.height,st.s,0,Math.PI*2);
+      sx.fill();
+    }
+    sx.globalAlpha=1;
+  })();
+}
+
+// ── UI HELPERS
+function updCoins(){
+  const v=coins.toLocaleString();
+  document.getElementById('coinAmt').textContent=v;
+  document.getElementById('mCoins').textContent=v;
+  document.getElementById('iCoins').textContent=v;
+  document.getElementById('sCoins').textContent=v;
+}
+function updLuck(){
+  const l=totalLuck();
+  document.getElementById('luckVal').textContent=`x${l.toFixed(2)}`;
+  // log scale so the bar still looks meaningful at very high luck values
+  const pct=Math.min(100,Math.log10(l)*50+3);
+  document.getElementById('luckFill').style.width=Math.max(3,pct)+'%';
+  document.getElementById('boostPills').innerHTML=tempBoosts.map(b=>`<span class="bp">🧪 x${b.mult} · ${b.rl} rolls left</span>`).join('');
+}
+function updCoinSub(){document.getElementById('coinSub').textContent=coinMult>1?`x${coinMult} coin multiplier active`:`+coins per roll`;}
+function toast(msg,col='#e8e4f0'){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.color=col;
+  t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);
+}
+function coinPop(n,el){
+  const pop=document.createElement('div');pop.className='cpop';pop.textContent=`+${n}🪙`;
+  const r=el.getBoundingClientRect();
+  pop.style.cssText=`left:${r.left+r.width/2}px;top:${r.top+window.scrollY}px;transform:translateX(-50%)`;
+  document.body.appendChild(pop);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{pop.style.transform='translateX(-50%) translateY(-44px)';pop.style.opacity='0';}));
+  setTimeout(()=>pop.remove(),900);
+}
+
+// ── AUTO ROLL UI
+function updAutoUI(){
+  const unlocked=rolls>=100||owned['auto_unlocked'];
+  const locked=document.getElementById('autoLocked');
+  const prog=document.getElementById('autoProgress');
+  const right=document.getElementById('autoRight');
+  if(!unlocked){
+    locked.style.display='block';
+    prog.textContent=`${Math.min(rolls,100)} / 100 rolls`;
+    prog.style.display='block';
+  } else {
+    owned['auto_unlocked']=true;
+    locked.style.display='none';
+    prog.style.display='none';
+    if(!right.querySelector('.auto-toggle')){
+      const lbl=document.createElement('label');lbl.className='auto-toggle';
+      lbl.innerHTML=`<input type="checkbox" id="autoChk"><span class="auto-slider"></span>`;
+      right.appendChild(lbl);
+      document.getElementById('autoChk').addEventListener('change',function(){
+        autoOn=this.checked;
+        if(autoOn){
+          if(autoTimer)clearInterval(autoTimer);
+          autoTimer=setInterval(()=>{if(!rolling)execRolls(currentRollCount,true);},1500);
+          toast('⚙️ Auto-Roller started!','#4ddb82');
+        } else {
+          clearInterval(autoTimer);autoTimer=null;
+          toast('⚙️ Auto-Roller stopped.');
+        }
+      });
+    }
+  }
+}
+
+// ── ROLL COUNT SELECTOR
+function selectRollCount(btn,n){
+  if(btn.classList.contains('locked'))return;
+  document.querySelectorAll('.rc-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentRollCount=n;
+  const rollBtn=document.getElementById('rollBtn');
+  rollBtn.textContent=n===1?'ROLL':`ROLL x${n}`;
+}
+function unlockRollBtn(n){
+  document.querySelectorAll('.rc-btn').forEach(b=>{
+    if(parseInt(b.dataset.n)===n){
+      b.classList.remove('locked');
+      const badge=b.querySelector('.lock-badge');
+      if(badge)badge.remove();
+    }
+  });
+}
+
+// ── INVENTORY SYSTEM
+function addToInventory(aura){
+  const existing=inventory.find(i=>i.name===aura.name);
+  if(existing){existing.count++;return;}
+  inventory.push({name:aura.name,color:aura.color,rarity:aura.rarity,baseCoins:aura.coins,count:1,fav:false});
+}
+function sellValue(item){return Math.max(1,Math.round((item.baseCoins||1)*SELL_MULT[item.rarity]));}
+function totalSellValue(){
+  return inventory.filter(i=>!(equippedAura&&i.name===equippedAura.name)).reduce((s,i)=>s+sellValue(i)*i.count,0);
+}
+function equipAura(name){
+  const item=inventory.find(i=>i.name===name);if(!item)return;
+  equippedAura={name:item.name,color:item.color,rarity:item.rarity};
+  // update canvas to show equipped aura
+  const auraObj=AURAS.find(a=>a.name===name);
+  if(auraObj){curAura=auraObj;spawnParts(auraObj);}
+  // update banner
+  const banner=document.getElementById('equippedBanner');
+  banner.classList.add('show');
+  document.getElementById('eqDot').style.background=item.color;
+  document.getElementById('eqName').textContent=item.name;
+  document.getElementById('eqName').style.color=item.color;
+  // update stage text info to show equipped aura
+  if(auraObj){
+    document.getElementById('auraName').textContent=auraObj.name;
+    document.getElementById('auraName').style.color=auraObj.color;
+    document.getElementById('auraName').style.textShadow=`0 0 28px ${auraObj.color}`;
+    document.getElementById('auraOdds').textContent=`1 in ${auraObj.odds.toLocaleString()}`;
+    document.getElementById('auraFlavor').textContent=auraObj.flavor;
+    const b=document.getElementById('rarityBadge');b.textContent=RLBL[auraObj.rarity];b.className='rarity-badge r-'+auraObj.rarity;
+  }
+  updInvUI();
+  toast(`✦ ${name} equipped!`,item.color);
+}
+function unequipAura(){
+  equippedAura=null;
+  document.getElementById('equippedBanner').classList.remove('show');
+  // restore last rolled aura visuals if any
+  const lastRolled=inventory[0];
+  if(lastRolled){
+    const auraObj=AURAS.find(a=>a.name===lastRolled.name);
+    if(auraObj){curAura=auraObj;spawnParts(auraObj);}
+  }
+  updInvUI();
+  toast('Aura unequipped.');
+}
+function sellAura(name){
+  const idx=inventory.findIndex(i=>i.name===name);
+  if(idx===-1)return;
+  if(equippedAura&&equippedAura.name===name){toast('Unequip first before selling!','#ff4a6e');return;}
+  const item=inventory[idx];
+  if(item.fav){toast('Unfavorite ★ before selling!','#ff4a6e');return;}
+  const val=sellValue(item)*item.count;
+  coins+=val;
+  inventory.splice(idx,1);
+  updCoins();updInvUI();
+  toast(`Sold ${item.name} for ${val.toLocaleString()} 🪙`,item.color);
+}
+function toggleFav(name){
+  const item=inventory.find(i=>i.name===name);
+  if(!item)return;
+  item.fav=!item.fav;
+  updInvUI();
+  toast(item.fav?`★ ${name} favorited — won't be sold!`:`☆ ${name} unfavorited`,item.color);
+}
+window.sellAll=function(){
+  const toSell=inventory.filter(i=>!(equippedAura&&i.name===equippedAura.name)&&!i.fav);
+  if(!toSell.length){toast('Nothing to sell! (Favorites and equipped are kept)');return;}
+  let total=0;
+  for(const item of toSell){total+=sellValue(item)*item.count;}
+  coins+=total;
+  inventory=inventory.filter(i=>(equippedAura&&i.name===equippedAura.name)||i.fav);
+  updCoins();updInvUI();
+  toast(`Sold ${toSell.length} aura${toSell.length>1?'s':''} for ${total.toLocaleString()} 🪙 (★ favorites kept)`,'#4ddb82');
+};
+window.setInvTab=function(tab){
+  invTab=tab;
+  document.querySelectorAll('.itab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  updInvGrid();
+};
+
+function updInvUI(){
+  const total=inventory.reduce((s,i)=>s+i.count,0);
+  const unique=inventory.length;
+  document.getElementById('invTotal').textContent=total;
+  document.getElementById('invUnique').textContent=unique;
+  document.getElementById('invSellVal').textContent=totalSellValue().toLocaleString()+' 🪙';
+  document.getElementById('sInv').textContent=total;
+  updInvGrid();
+}
+
+function updInvGrid(){
+  const minRank={all:0,uncommon:1,rare:2,epic:3}[invTab]||0;
+  const filtered=inventory.filter(i=>RORD.indexOf(i.rarity)>=minRank);
+  const grid=document.getElementById('invGrid');
+  if(!filtered.length){
+    grid.className='';
+    grid.innerHTML=`<div class="inv-empty">No auras${invTab!=='all'?' at this rarity':''} yet.<br>Keep rolling!</div>`;
+    return;
+  }
+  filtered.sort((a,b)=>RORD.indexOf(b.rarity)-RORD.indexOf(a.rarity));
+  grid.innerHTML='';
+  grid.className='inv-grid';
+  for(const item of filtered){
+    const isEq=!!equippedAura&&equippedAura.name===item.name;
+    const sv=sellValue(item);
+    const card=document.createElement('div');
+    card.className='inv-card'+(isEq?' equipped-card':'');
+
+    // badge
+    if(isEq){const b=document.createElement('span');b.className='inv-badge-eq';b.textContent='Equipped';card.appendChild(b);}
+    if(item.fav){const fb=document.createElement('div');fb.className='fav-badge';fb.textContent='★';fb.style.cssText='position:absolute;bottom:5px;right:5px;font-size:12px;color:#ffcc00;line-height:1';card.appendChild(fb);}
+    if(item.count>1){const b=document.createElement('span');b.className='inv-count-badge';b.textContent='x'+item.count;card.appendChild(b);}
+
+    // orb preview
+    const orb=document.createElement('div');
+    orb.className='inv-card-orb';
+    orb.style.cssText=`background:${ha(item.color,.12)};border:1px solid ${ha(item.color,.25)}`;
+    const ball=document.createElement('div');
+    ball.style.cssText=`width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff9,${item.color});box-shadow:0 0 18px ${item.color}88`;
+    orb.appendChild(ball);card.appendChild(orb);
+
+    // name + rarity
+    const nm=document.createElement('div');nm.className='inv-card-name';nm.title=item.name;nm.textContent=item.name;card.appendChild(nm);
+    const rar=document.createElement('div');rar.className='inv-card-rarity r-'+item.rarity;rar.style.cssText='border:none;background:none;padding:0';rar.textContent=RLBL[item.rarity];card.appendChild(rar);
+
+    // buttons
+    const btns=document.createElement('div');btns.className='inv-card-btns';
+    const eqBtn=document.createElement('button');
+    eqBtn.className='icb icb-equip'+(isEq?' unequip':'');
+    eqBtn.textContent=isEq?'Unequip':'Equip';
+    eqBtn.addEventListener('click',()=>{if(isEq)unequipAura();else equipAura(item.name);});
+    const favBtn=document.createElement('button');
+    favBtn.className='icb icb-fav'+(item.fav?' fav-on':'');
+    favBtn.textContent=item.fav?'★':'☆';
+    favBtn.title=item.fav?'Unfavorite':'Favorite (protected from Sell All)';
+    favBtn.addEventListener('click',()=>toggleFav(item.name));
+    const sellBtn=document.createElement('button');
+    sellBtn.className='icb icb-sell';
+    sellBtn.textContent='Sell';
+    sellBtn.addEventListener('click',()=>sellAura(item.name));
+    btns.appendChild(eqBtn);btns.appendChild(favBtn);btns.appendChild(sellBtn);card.appendChild(btns);
+
+    // sell value
+    const sv2=document.createElement('div');sv2.className='inv-sell-val';sv2.textContent=sv.toLocaleString()+' 🪙 each';card.appendChild(sv2);
+
+    grid.appendChild(card);
+  }
+}
+
+// ── SET AURA ON STAGE
+function setAura(aura,silent){
+  // update canvas only if nothing is equipped
+  if(!equippedAura){curAura=aura;spawnParts(aura);}
+  // always update text info to show what was just rolled
+  document.getElementById('auraName').textContent=aura.name;
+  document.getElementById('auraName').style.color=aura.color;
+  document.getElementById('auraName').style.textShadow=`0 0 28px ${aura.color}`;
+  document.getElementById('auraOdds').textContent=`1 in ${aura.odds.toLocaleString()}`;
+  document.getElementById('auraFlavor').textContent=aura.flavor;
+  const b=document.getElementById('rarityBadge');b.textContent=RLBL[aura.rarity];b.className='rarity-badge r-'+aura.rarity;
+  if(!silent){const fl=document.getElementById('flash');fl.style.background=aura.color;fl.style.opacity='.13';setTimeout(()=>fl.style.opacity='0',170);}
+  if(!bestRarity||RORD.indexOf(aura.rarity)>RORD.indexOf(bestRarity)){
+    bestRarity=aura.rarity;
+    const el=document.getElementById('sBest');el.textContent=RLBL[aura.rarity];el.style.color=aura.color;
+  }
+}
+
+// ── ROLL ENGINE (used by auto-roller and silent paths)
+function execRolls(count,silent){
+  if(rolling||csActive)return;
+  const allResults=[];
+  for(let i=0;i<count;i++)allResults.push(rollAura(totalLuck()));
+  finaliseRolls(allResults,silent);
+}
+
+function doRoll(count,silent){
+  if(rolling||csActive)return;
+  count=count||currentRollCount;
+  rolling=true;isRolling=true;
+  const btn=document.getElementById('rollBtn');btn.classList.add('rolling');
+  btn.textContent='ROLLING...';
+  let cl=0,max=silent?0:15;
+  const iv=setInterval(()=>{
+    if(!silent){
+      const f=AURAS[Math.floor(Math.random()*AURAS.length)];
+      document.getElementById('auraName').textContent=f.name;
+      document.getElementById('auraName').style.color=f.color;
+    }
+    cl++;
+    if(cl>=max){
+      clearInterval(iv);isRolling=false;
+      // Roll all results now
+      const allResults=[];
+      for(let i=0;i<count;i++){
+        if(i===count-1&&forcedNextAura){allResults.push(forcedNextAura);forcedNextAura=null;}
+        else allResults.push(rollAura(totalLuck()));
+      }
+      const lastResult=allResults[allResults.length-1];
+      // Find best result for cutscene
+      const bestResult=allResults.reduce((best,r)=>RORD.indexOf(r.rarity)>RORD.indexOf(best.rarity)?r:best,allResults[0]);
+      const bestRi=RORD.indexOf(bestResult.rarity);
+      rolling=false;btn.classList.remove('rolling');
+      btn.textContent=currentRollCount===1?'ROLL':'ROLL x'+currentRollCount;
+      if(!silent && bestRi>=RARITY_CS_MIN){
+        // play cutscene for best result, then show all results
+        showCutscene(bestResult,()=>finaliseRolls(allResults,silent));
+      } else {
+        finaliseRolls(allResults,silent);
+      }
+    }
+  },silent?1:55);
+}
+
+function finaliseRolls(allResults,silent){
+  let totalEarned=0;
+  for(const result of allResults){
+    rolls++;
+    const earned=Math.round((result.coins||1)*coinMult);
+    coins+=earned;totalEarned+=earned;
+    for(const b of tempBoosts)b.rl=Math.max(0,b.rl-1);
+    tempBoosts=tempBoosts.filter(b=>b.rl>0);
+    addToInventory(result);
+  }
+  const lastResult=allResults[allResults.length-1];
+  document.getElementById('sRolls').textContent=rolls.toLocaleString();
+  updCoins();updLuck();updInvUI();
+  setAura(lastResult,silent);
+  if(!silent)coinPop(totalEarned,document.getElementById('coinAmt'));
+  const bestResult=allResults.reduce((b,r)=>RORD.indexOf(r.rarity)>RORD.indexOf(b.rarity)?r:b,allResults[0]);
+  if(RORD.indexOf(bestResult.rarity)>=4)toast('✨ '+bestResult.name+' — '+RLBL[bestResult.rarity]+'!',bestResult.color);
+  if(rolls>=100&&!owned['auto_unlocked']){owned['auto_unlocked']=true;updAutoUI();toast('⚙️ Auto-Roller unlocked! (100 rolls reached)','#4ddb82');}
+  else updAutoUI();
+  // Show results panel if multi-roll
+  if(!silent && allResults.length>1)showResults(allResults);
+  if(!silent)saveGame();
+}
+
+// ── INLINE MULTI-ROLL RESULTS PANEL
+let rpCollapsed=false;
+function showResults(results){
+  const panel=document.getElementById('results-panel');
+  const grid=document.getElementById('rp-grid');
+  const summary=document.getElementById('rp-summary');
+  const title=document.getElementById('rp-title');
+  const meta=document.getElementById('rp-meta');
+  grid.innerHTML='';summary.innerHTML='';
+  title.textContent='Roll Results ('+results.length+')';
+  const counts={};
+  for(const r of results)counts[r.rarity]=(counts[r.rarity]||0)+1;
+  const sumText=[];
+  for(const rar of RORD){
+    if(!counts[rar])continue;
+    const chip=document.createElement('span');
+    chip.className='rp-chip r-'+rar;
+    chip.textContent=RLBL[rar]+' x'+counts[rar];
+    summary.appendChild(chip);
+    sumText.push(counts[rar]+' '+RLBL[rar]);
+  }
+  meta.textContent=sumText.join(', ');
+  const sorted=[...results].sort((a,b)=>RORD.indexOf(b.rarity)-RORD.indexOf(a.rarity));
+  sorted.forEach((aura,i)=>{
+    const card=document.createElement('div');
+    card.className='rp-card';
+    card.style.animationDelay=(i*20)+'ms';
+    const orb=document.createElement('div');orb.className='rp-orb';
+    orb.style.cssText='background:radial-gradient(circle at 35% 35%,#fff9,'+aura.color+');box-shadow:0 0 12px '+aura.color+'88';
+    card.appendChild(orb);
+    const nm=document.createElement('div');nm.className='rp-name';nm.textContent=aura.name;nm.title=aura.name;card.appendChild(nm);
+    const rar=document.createElement('div');rar.className='rp-rar r-'+aura.rarity;rar.style.cssText='border:none;background:none;padding:0';rar.textContent=RLBL[aura.rarity];card.appendChild(rar);
+    grid.appendChild(card);
+  });
+  rpCollapsed=false;
+  document.getElementById('rp-body').classList.remove('collapsed');
+  document.getElementById('rp-toggle').classList.remove('collapsed');
+  panel.classList.add('show');
+}
+window.closeResults=function(){document.getElementById('results-panel').classList.remove('show');};
+window.toggleResults=function(){
+  rpCollapsed=!rpCollapsed;
+  document.getElementById('rp-body').classList.toggle('collapsed',rpCollapsed);
+  document.getElementById('rp-toggle').classList.toggle('collapsed',rpCollapsed);
+};
+
+// ── SHOP
+function applyPassive(item){
+  if(item.eff&&item.eff.luck)baseLuck+=item.eff.luck;
+  if(item.eff&&item.eff.coinMult){coinMult=Math.max(coinMult,item.eff.coinMult);updCoinSub();}
+}
+
+let shopTab='shop';
+window.setShopTab=function(tab){
+  shopTab=tab;
+  document.getElementById('stab-shop').classList.toggle('active',tab==='shop');
+  document.getElementById('stab-craft').classList.toggle('active',tab==='craft');
+  document.getElementById('stab-codes').classList.toggle('active',tab==='codes');
+  document.getElementById('shopBody').style.display=tab==='shop'?'':'none';
+  document.getElementById('craftBody').style.display=tab==='craft'?'':'none';
+  document.getElementById('codesShopBody').style.display=tab==='codes'?'':'none';
+  if(tab==='craft')renderCraft();
+  else if(tab==='codes')renderCodesInShop();
+  else renderShop();
+};
+
+// ── CRAFTING ───────────────────────────────────────────────────────────────
+function invCountByRarity(rarity){
+  return inventory.filter(i=>i.rarity===rarity).reduce((s,i)=>s+i.count,0);
+}
+function canCraft(recipe){
+  return recipe.req.every(r=>invCountByRarity(r.rarity)>=r.count);
+}
+function consumeForCraft(recipe){
+  // consume auras in order, lowest rarity first (non-fav, non-equipped)
+  for(const r of recipe.req){
+    let needed=r.count;
+    // consume from non-fav non-equipped first
+    const candidates=inventory.filter(i=>i.rarity===r.rarity&&!i.fav&&!(equippedAura&&equippedAura.name===i.name));
+    for(const item of candidates){
+      if(needed<=0)break;
+      const use=Math.min(item.count,needed);
+      item.count-=use;needed-=use;
+    }
+    // if still needed, consume fav ones (but not equipped)
+    if(needed>0){
+      const favCands=inventory.filter(i=>i.rarity===r.rarity&&i.fav&&!(equippedAura&&equippedAura.name===i.name));
+      for(const item of favCands){
+        if(needed<=0)break;
+        const use=Math.min(item.count,needed);
+        item.count-=use;needed-=use;
+      }
+    }
+    if(needed>0)return false; // shouldn't happen
+  }
+  inventory=inventory.filter(i=>i.count>0);
+  return true;
+}
+function doCraft(id){
+  const recipe=CRAFT_RECIPES.find(r=>r.id===id);
+  if(!recipe)return;
+  if(!canCraft(recipe)){toast('Not enough auras!','#ff4a6e');return;}
+  // Check equipped won't be consumed
+  if(equippedAura){
+    for(const r of recipe.req){
+      const available=inventory.filter(i=>i.rarity===r.rarity&&!(equippedAura&&equippedAura.name===i.name)).reduce((s,i)=>s+i.count,0);
+      if(available<r.count){toast(`Unequip your aura first — needed for crafting!`,'#ff4a6e');return;}
+    }
+  }
+  if(!consumeForCraft(recipe)){toast('Craft failed — missing auras','#ff4a6e');return;}
+  baseLuck+=recipe.luck;
+  updLuck();updInvUI();
+  renderCraft();
+  toast(`${recipe.icon} ${recipe.name} crafted! +${recipe.luck} Luck!`,'#4ddb82');
+  saveGame();
+}
+function renderCraft(){
+  const body=document.getElementById('craftBody');
+  body.innerHTML='';
+  const ttl=document.createElement('div');ttl.className='sec-ttl';ttl.textContent='Craft Luck Items — consumes auras from inventory';body.appendChild(ttl);
+  // inventory counts by rarity
+  const counts={};
+  for(const r of ['common','uncommon','rare','epic','legendary','mythical','secret'])counts[r]=invCountByRarity(r);
+  // show inventory counts
+  const countRow=document.createElement('div');countRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem';
+  for(const [r,n] of Object.entries(counts)){
+    if(n===0)continue;
+    const chip=document.createElement('span');
+    chip.className='rarity-badge r-'+r;
+    chip.style.cssText='font-size:10px;letter-spacing:1px';
+    chip.textContent=RLBL[r]+' x'+n;
+    countRow.appendChild(chip);
+  }
+  if(countRow.children.length===0){countRow.innerHTML='<span style="font-size:11px;color:var(--muted)">No auras in inventory yet — roll to collect!</span>';}
+  body.appendChild(countRow);
+
+  const grid=document.createElement('div');grid.className='craft-grid';
+  for(const recipe of CRAFT_RECIPES){
+    const craftable=canCraft(recipe);
+    const card=document.createElement('div');
+    card.className='craft-card '+(craftable?'craftable':'locked');
+    // icon
+    const ico=document.createElement('span');ico.className='craft-icon';ico.textContent=recipe.icon;card.appendChild(ico);
+    // name
+    const nm=document.createElement('div');nm.className='craft-nm';nm.textContent=recipe.name;card.appendChild(nm);
+    // effect
+    const ef=document.createElement('div');ef.className='craft-eff';ef.textContent='+'+recipe.luck+' Luck';card.appendChild(ef);
+    // requirements
+    const reqs=document.createElement('div');reqs.className='craft-reqs';
+    for(const r of recipe.req){
+      const have=counts[r.rarity]||0;
+      const met=have>=r.count;
+      const row=document.createElement('div');row.className='craft-req';
+      const dot=document.createElement('span');dot.className='craft-req-dot';dot.style.background=met?'#4ddb82':'#ff4a6e';
+      const txt=document.createElement('span');txt.className='craft-req-txt '+(met?'met':'unmet');
+      txt.textContent=RLBL[r.rarity]+' x'+r.count+' (You have '+have+')';
+      row.appendChild(dot);row.appendChild(txt);reqs.appendChild(row);
+    }
+    card.appendChild(reqs);
+    // button
+    const btn=document.createElement('button');
+    btn.className='craft-btn '+(craftable?'can':'no');
+    btn.textContent=craftable?'CRAFT':'MISSING';
+    if(craftable)btn.addEventListener('click',()=>doCraft(recipe.id));
+    card.appendChild(btn);
+    grid.appendChild(card);
+  }
+  body.appendChild(grid);
+}
+
+function renderShop(){
+  const cats={};
+  for(const it of SHOP_ITEMS)(cats[it.cat]=cats[it.cat]||[]).push(it);
+  const body=document.getElementById('shopBody');
+  body.innerHTML='';
+
+  // ── REPEATABLE LUCK MULTIPLIER at the top ──
+  const rmSection=document.createElement('div');
+  const rmTtl=document.createElement('div');rmTtl.className='sec-ttl';rmTtl.textContent='Luck Multiplier';rmSection.appendChild(rmTtl);
+  const rmCard=document.createElement('div');
+  rmCard.className='sitem';rmCard.style.cssText='grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:14px 16px';
+  const price=luckMultPrice(luckMultLevel);
+  const canBuy=coins>=price;
+  if(!canBuy)rmCard.classList.add('broke');
+
+  // left: icon + progress bar fill
+  const rmLeft=document.createElement('div');rmLeft.style.cssText='flex-shrink:0;text-align:center;min-width:48px';
+  const rmIco=document.createElement('div');rmIco.style.cssText='font-size:32px;line-height:1';rmIco.textContent='⚡';
+  const rmLvl=document.createElement('div');rmLvl.style.cssText='font-family:"Cinzel",serif;font-size:10px;color:var(--gold);margin-top:3px;letter-spacing:1px';rmLvl.textContent='LVL '+luckMultLevel;
+  rmLeft.appendChild(rmIco);rmLeft.appendChild(rmLvl);rmCard.appendChild(rmLeft);
+
+  // middle: name, desc, bar
+  const rmMid=document.createElement('div');rmMid.style.cssText='flex:1;min-width:0';
+  const rmNm=document.createElement('div');rmNm.className='snm';rmNm.style.fontSize='13px';rmNm.textContent='Luck Multiplier';rmMid.appendChild(rmNm);
+  const rmDesc=document.createElement('div');rmDesc.className='sdsc';rmDesc.textContent='+0.5 luck each purchase. Price increases every level.';rmMid.appendChild(rmDesc);
+  // progress bar showing total luck gained from this
+  const totalFromMult=(luckMultLevel*0.5).toFixed(1);
+  const rmEff=document.createElement('div');rmEff.className='seff';rmEff.textContent=`Total gained: +${totalFromMult} luck from ${luckMultLevel} purchase${luckMultLevel!==1?'s':''}`;rmMid.appendChild(rmEff);
+  // mini bar
+  const barWrap=document.createElement('div');barWrap.style.cssText='height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-top:5px';
+  const barFill=document.createElement('div');barFill.style.cssText=`height:100%;background:linear-gradient(90deg,#ffbb00,#ff6b00);border-radius:2px;width:${Math.min(100,(luckMultLevel%10)*10)}%`;
+  barWrap.appendChild(barFill);rmMid.appendChild(barWrap);
+  rmCard.appendChild(rmMid);
+
+  // right: price + buy btn
+  const rmRight=document.createElement('div');rmRight.style.cssText='flex-shrink:0;text-align:center';
+  const rmPrice=document.createElement('div');rmPrice.style.cssText='font-family:"Cinzel",serif;font-size:13px;color:var(--gold);margin-bottom:6px';rmPrice.textContent=price.toLocaleString()+' 🪙';
+  const rmBtn=document.createElement('button');
+  rmBtn.style.cssText='padding:7px 16px;background:rgba(255,187,0,0.1);border:1px solid rgba(255,187,0,0.35);color:var(--gold2);border-radius:9px;font-family:"Cinzel",serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:background .16s;white-space:nowrap';
+  rmBtn.textContent='UPGRADE';
+  if(!canBuy){rmBtn.style.opacity='0.4';rmBtn.style.cursor='not-allowed';}
+  else{rmBtn.addEventListener('mouseover',()=>rmBtn.style.background='rgba(255,187,0,0.2)');rmBtn.addEventListener('mouseout',()=>rmBtn.style.background='rgba(255,187,0,0.1)');}
+  rmBtn.addEventListener('click',()=>buyLuckMult());
+  rmRight.appendChild(rmPrice);rmRight.appendChild(rmBtn);
+  rmCard.appendChild(rmRight);
+  rmSection.appendChild(rmCard);
+  body.appendChild(rmSection);
+
+  for(const [cat,items] of Object.entries(cats)){
+    const ttl=document.createElement('div');ttl.className='sec-ttl';
+    ttl.textContent=cat==='Potions'?`Potions (${tempBoosts.length}/3 active)`:cat;
+    body.appendChild(ttl);
+    const grid=document.createElement('div');grid.className='shop-grid';
+    for(const it of items){
+      const isOwned=!!owned[it.id];
+      const canBuy=coins>=it.price;
+      const potionsFull=it.type==='temp'&&tempBoosts.length>=3;
+      const card=document.createElement('div');
+      let cls='sitem';
+      if(isOwned&&!it.stack)cls+=' owned';
+      if(potionsFull)cls+=' broke';
+      else if(!canBuy&&!(isOwned&&!it.stack))cls+=' broke';
+      card.className=cls;
+
+      // owned badge
+      if(isOwned&&!it.stack){const b=document.createElement('span');b.className='sbadge sb-own';b.textContent='Owned';card.appendChild(b);}
+      // potion full badge
+      if(potionsFull){const b=document.createElement('span');b.className='sbadge';b.style.cssText='background:rgba(255,74,110,0.14);color:#ff4a6e;border:1px solid rgba(255,74,110,0.25)';b.textContent='Full 3/3';card.appendChild(b);}
+
+      // icon
+      const ico=document.createElement('span');ico.className='sico';ico.textContent=it.icon;card.appendChild(ico);
+      // name
+      const nm=document.createElement('div');nm.className='snm';nm.textContent=it.name;card.appendChild(nm);
+      // desc
+      const dsc=document.createElement('div');dsc.className='sdsc';dsc.textContent=it.desc;card.appendChild(dsc);
+      // effect label
+      const effText=it.eff?.luck?`+${it.eff.luck} Luck`:
+                    it.eff?.coinMult?`x${it.eff.coinMult} Coins`:
+                    it.type==='multiroll'?`Unlock Roll x${it.rolls} — Permanent`:'';
+      if(effText){const ef=document.createElement('div');ef.className='seff';ef.textContent=effText;card.appendChild(ef);}
+      // price
+      const prc=document.createElement('div');prc.className='sprc';
+      prc.textContent=isOwned&&!it.stack?'Owned':it.price.toLocaleString()+' 🪙';
+      card.appendChild(prc);
+
+      card.addEventListener('click',()=>buyItem(it.id));
+      grid.appendChild(card);
+    }
+    body.appendChild(grid);
+  }
+}
+
+function buyLuckMult(){
+  const price=luckMultPrice(luckMultLevel);
+  if(coins<price){toast(`Need ${(price-coins).toLocaleString()} more 🪙`,'#ff4a6e');return;}
+  coins-=price;
+  luckMultLevel++;
+  baseLuck+=0.5;
+  updCoins();updLuck();
+  renderShop();
+  toast(`⚡ Luck Multiplier Lv.${luckMultLevel} — +0.5 luck! Next: ${luckMultPrice(luckMultLevel).toLocaleString()} 🪙`,'#ffbb00');
+}
+
+function buyItem(id){
+  const it=SHOP_ITEMS.find(i=>i.id===id);if(!it)return;
+  if(owned[id]&&!it.stack){toast('Already owned!');return;}
+  if(coins<it.price){toast(`Need ${(it.price-coins).toLocaleString()} more 🪙`,'#ff4a6e');return;}
+  coins-=it.price;updCoins();
+  if(it.type==='passive'){owned[id]=true;applyPassive(it);toast(`${it.icon} ${it.name} equipped!`,'#4ddb82');}
+  else if(it.type==='temp'){
+    const MAX_POTIONS=3;
+    if(tempBoosts.length>=MAX_POTIONS){toast(`Max ${MAX_POTIONS} potions active at once!`,'#ff4a6e');return;}
+    tempBoosts.push({mult:it.eff.mult,rl:it.eff.rl,name:it.name});
+    toast(`${it.icon} ${it.name} active! (${tempBoosts.length}/${MAX_POTIONS})`,'#4a9eff');
+  }
+  else if(it.type==='multiroll'){owned[id]=true;unlockRollBtn(it.rolls);toast(`${it.icon} Roll x${it.rolls} unlocked forever!`,'#c06eff');}
+  updLuck();renderShop();saveGame();
+}
+
+// ── MODAL CONTROLS
+document.getElementById('openShopBtn').addEventListener('click',()=>{setShopTab('shop');document.getElementById('shopModal').classList.add('open');});
+document.getElementById('closeShop').addEventListener('click',()=>document.getElementById('shopModal').classList.remove('open'));
+document.getElementById('shopModal').addEventListener('click',e=>{if(e.target.id==='shopModal')document.getElementById('shopModal').classList.remove('open');});
+
+window.openInv=function(){updInvUI();document.getElementById('invModal').classList.add('open');};
+window.openCredits=function(){document.getElementById('creditsModal').classList.add('open');};
+window.openUpdateLog=function(){
+  document.getElementById('updateModal').classList.add('open');
+  // make code spans clickable — fills shop codes tab input
+  document.querySelectorAll('.upd-code').forEach(el=>{
+    el.title='Click to copy code';
+    el.onclick=()=>{
+      const code=el.textContent.trim();
+      // close update log, open shop on codes tab, pre-fill input
+      document.getElementById('updateModal').classList.remove('open');
+      setShopTab('codes');
+      document.getElementById('shopModal').classList.add('open');
+      setTimeout(()=>{
+        const inp=document.getElementById('codeInputShop');
+        if(inp){inp.value=code;inp.focus();}
+      },80);
+    };
+  });
+};
+document.getElementById('updateModal').addEventListener('click',e=>{if(e.target.id==='updateModal')document.getElementById('updateModal').classList.remove('open');});
+document.getElementById('creditsModal').addEventListener('click',e=>{if(e.target.id==='creditsModal')document.getElementById('creditsModal').classList.remove('open');});
+document.getElementById('closeInv').addEventListener('click',()=>document.getElementById('invModal').classList.remove('open'));
+document.getElementById('invModal').addEventListener('click',e=>{if(e.target.id==='invModal')document.getElementById('invModal').classList.remove('open');});
+
+document.getElementById('rollBtn').addEventListener('click',()=>doRoll());
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!document.getElementById('shopModal').classList.contains('open')&&!document.getElementById('invModal').classList.contains('open')){
+    e.preventDefault();doRoll();
+  }
+});
+
+// ── CHEAT MENU ─────────────────────────────────────────────────────────────
+
+function openCheat(){
+  document.getElementById('cheatModal').classList.add('open');
+  const fl=document.getElementById('flash');
+  fl.style.background='#ff2aff';fl.style.opacity='.2';
+  setTimeout(()=>fl.style.opacity='0',300);
+  // build aura picker
+  const grid=document.getElementById('aurapicker');
+  grid.innerHTML='';
+  const sorted=[...AURAS].sort((a,b)=>RORD.indexOf(a.rarity)-RORD.indexOf(b.rarity));
+  for(const aura of sorted){
+    const btn=document.createElement('div');btn.className='ap-btn';
+    const orb=document.createElement('div');orb.className='ap-orb';
+    orb.style.cssText='background:radial-gradient(circle at 35% 35%,#fff9,'+aura.color+');box-shadow:0 0 10px '+aura.color+'88';
+    const nm=document.createElement('div');nm.className='ap-name';nm.textContent=aura.name;nm.title=aura.name;
+    const rar=document.createElement('div');rar.className='ap-rar r-'+aura.rarity;rar.style.cssText='border:none;background:none;padding:0';rar.textContent=RLBL[aura.rarity];
+    btn.appendChild(orb);btn.appendChild(nm);btn.appendChild(rar);
+    btn.addEventListener('click',()=>{
+      forcedNextAura=aura;
+      toast('✦ Next roll forced: '+aura.name,'#ff2aff');
+      closeCheat();
+    });
+    grid.appendChild(btn);
+  }
+}
+function closeCheat(){document.getElementById('cheatModal').classList.remove('open');}
+document.getElementById('cheatClose').addEventListener('click',closeCheat);
+document.getElementById('cheatModal').addEventListener('click',e=>{if(e.target.id==='cheatModal')closeCheat();});
+
+// cheat actions
+document.getElementById('ch-coins1k').addEventListener('click',()=>{coins+=1000;updCoins();toast('🪙 +1,000 coins','#ff2aff');});
+document.getElementById('ch-coins10k').addEventListener('click',()=>{coins+=10000;updCoins();toast('🪙 +10,000 coins','#ff2aff');});
+document.getElementById('ch-coins100k').addEventListener('click',()=>{coins+=100000;updCoins();toast('🪙 +100,000 coins','#ff2aff');});
+document.getElementById('ch-luck1').addEventListener('click',()=>{baseLuck+=1;updLuck();toast('🍀 +1.0 Luck','#ff2aff');});
+document.getElementById('ch-luck10').addEventListener('click',()=>{baseLuck+=10;updLuck();toast('🔮 +10.0 Luck','#ff2aff');});
+document.getElementById('ch-maxluck').addEventListener('click',()=>{baseLuck=999;updLuck();toast('⚛️ Luck set to x999','#ff2aff');});
+
+document.getElementById('ch-unlockrolls').addEventListener('click',()=>{
+  [2,5,10,50].forEach(n=>{
+    const mr=MULTI_ROLLS.find(m=>m.rolls===n);
+    if(mr&&!owned[mr.id]){owned[mr.id]=true;unlockRollBtn(n);}
+  });
+  updCoins();renderShop();toast('🔓 All roll tiers unlocked!','#ff2aff');
+});
+
+document.getElementById('ch-buyshop').addEventListener('click',()=>{
+  for(const it of SHOP_ITEMS){
+    if(!owned[it.id]&&it.type==='passive'){owned[it.id]=true;applyPassive(it);}
+    if(!owned[it.id]&&it.type==='multiroll'){owned[it.id]=true;unlockRollBtn(it.rolls);}
+  }
+  updLuck();updCoins();updCoinSub();renderShop();toast('🛒 All shop items + multi-rolls unlocked!','#ff2aff');
+});
+
+document.getElementById('ch-rolls100').addEventListener('click',()=>{
+  rolls+=100;
+  document.getElementById('sRolls').textContent=rolls.toLocaleString();
+  updAutoUI();toast('⚙️ +100 rolls — auto-roller unlocked!','#ff2aff');
+});
+
+document.getElementById('ch-potion').addEventListener('click',()=>{
+  tempBoosts.push({mult:10,rl:999,name:'Cheat Potion'});
+  updLuck();toast('🌟 x10 luck for 999 rolls!','#ff2aff');
+});
+
+document.getElementById('ch-forceSecret').addEventListener('click',()=>{
+  const secret=AURAS.filter(a=>a.rarity==='secret');
+  const pick=secret[Math.floor(Math.random()*secret.length)];
+  addToInventory(pick);
+  const earned=Math.round((pick.coins||1)*coinMult);
+  coins+=earned;updCoins();
+  setAura(pick,false);
+  updInvUI();
+  toast(`✨ ${pick.name} — Secret!`,'#ff2aff');
+  closeCheat();
+});
+
+
+
+document.getElementById('ch-customcoins').addEventListener('click',()=>{
+  const v=parseInt(document.getElementById('cheatCoinAmt').value)||0;
+  if(v>0){coins+=v;updCoins();document.getElementById('cheatCoinAmt').value='';toast(`🪙 +${v.toLocaleString()} coins`,'#ff2aff');}
+});
+document.getElementById('ch-customluck').addEventListener('click',()=>{
+  const v=parseFloat(document.getElementById('cheatLuckAmt').value)||0;
+  if(v>0){baseLuck=v;updLuck();document.getElementById('cheatLuckAmt').value='';toast(`🔮 Luck set to x${v}`,'#ff2aff');}
+});
+
+document.getElementById('ch-allAuras').addEventListener('click',()=>{
+  for(const aura of AURAS){
+    const existing=inventory.find(i=>i.name===aura.name);
+    if(existing){existing.count+=1;}
+    else{inventory.push({name:aura.name,color:aura.color,rarity:aura.rarity,baseCoins:aura.coins,count:1,fav:false});}
+  }
+  updInvUI();updCoins();
+  toast(`✦ All ${AURAS.length} auras added to inventory!`,'#4a9eff');
+});
+
+document.getElementById('ch-roll100k').addEventListener('click',()=>{
+  closeCheat();
+  toast('⚙️ Rolling 100,000 times silently...','#4ddb82');
+  // batch in chunks to not freeze the UI
+  let done=0;const chunk=2000;const total=100000;
+  function runChunk(){
+    for(let i=0;i<chunk&&done<total;i++,done++){
+      const result=rollAura(totalLuck());
+      rolls++;
+      const earned=Math.round((result.coins||1)*coinMult);
+      coins+=earned;
+      for(const b of tempBoosts)b.rl=Math.max(0,b.rl-1);
+      tempBoosts=tempBoosts.filter(b=>b.rl>0);
+      addToInventory(result);
+    }
+    document.getElementById('sRolls').textContent=rolls.toLocaleString();
+    updCoins();updLuck();updInvUI();updAutoUI();
+    if(done<total)setTimeout(runChunk,0);
+    else toast('✅ 100,000 rolls done!','#4ddb82');
+  }
+  runChunk();
+});
+
+// ── LOADING SCREEN ─────────────────────────────────────────────────────────
+const LOAD_STEPS=[
+  {pct:15, msg:'Summoning auras...'},
+  {pct:30, msg:'Spinning up the RNG...'},
+  {pct:50, msg:'Charging luck crystals...'},
+  {pct:65, msg:'Lighting the stars...'},
+  {pct:80, msg:'Polishing coins...'},
+  {pct:92, msg:'Aligning the cosmos...'},
+  {pct:100,msg:'Ready.'},
+];
+function runLoader(onDone){
+  const bar=document.getElementById('loaderBar');
+  const status=document.getElementById('loaderStatus');
+  let step=0;
+  const tick=setInterval(()=>{
+    if(step>=LOAD_STEPS.length){clearInterval(tick);setTimeout(onDone,350);return;}
+    const s=LOAD_STEPS[step++];
+    bar.style.width=s.pct+'%';
+    status.textContent=s.msg;
+  },200);
+}
+function dismissLoader(){
+  document.getElementById('loader').classList.add('hidden');
+}
+
+
+// ── CODES SYSTEM ───────────────────────────────────────────────────────────
+const CODES=[
+  {code:'JOESRNG',     reward:'🪙 1,000 Coins',                          fn:()=>{coins+=1000;updCoins();}},
+  {code:'LUCKYDAY',    reward:'🍀 +0.5 Luck permanently',                 fn:()=>{baseLuck+=0.5;updLuck();}},
+  {code:'STARDUST',    reward:'🌟 2,500 Coins + x2 luck (20 rolls)',      fn:()=>{coins+=2500;updCoins();tempBoosts.push({mult:2,rl:20,name:'Stardust'});updLuck();}},
+  {code:'VOIDWALKER',  reward:'🔮 +1.0 Luck permanently',                 fn:()=>{baseLuck+=1;updLuck();}},
+  {code:'SECRETHUNTER',reward:'💀 x5 luck for 25 rolls',                  fn:()=>{tempBoosts.push({mult:5,rl:25,name:'Secret Hunter'});updLuck();}},
+  {code:'GODMODE',     reward:'⚡ 10,000 Coins + x3 luck (30 rolls)',     fn:()=>{coins+=10000;updCoins();tempBoosts.push({mult:3,rl:30,name:'God Mode'});updLuck();}},
+];
+let redeemedCodes=new Set();
+
+function renderCodesInShop(){
+  const body=document.getElementById('codesShopBody');
+  body.innerHTML='';
+  body.innerHTML=`
+    <div class="sec-ttl" style="margin-top:0">Redeem a Code</div>
+    <div style="display:flex;gap:7px;margin-bottom:.5rem">
+      <input class="cheat-input" id="codeInputShop" type="text" placeholder="Enter code..." style="flex:1;text-transform:uppercase;letter-spacing:2px">
+      <button class="cheat-ibtn" id="redeemBtnShop" style="background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.35);color:#ffd700">REDEEM</button>
+    </div>
+    <div id="codeResultShop" style="min-height:22px;font-size:11px;letter-spacing:1px;text-align:center;margin-bottom:1rem"></div>
+    <div style="text-align:center;padding:18px 12px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.07);border-radius:10px">
+      <div style="font-size:18px;margin-bottom:6px">📋</div>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;line-height:1.6">Codes are hidden in the <strong style="color:rgba(255,255,255,0.4)">Update Log</strong>.<br>Read carefully — they're worth it.</div>
+    </div>
+  `;
+  document.getElementById('redeemBtnShop').addEventListener('click',redeemCodeShop);
+  document.getElementById('codeInputShop').addEventListener('keydown',e=>{if(e.key==='Enter')redeemCodeShop();});
+}
+function redeemCodeShop(){
+  const inp=document.getElementById('codeInputShop');
+  const res=document.getElementById('codeResultShop');
+  if(!inp||!res)return;
+  const val=inp.value.trim().toUpperCase();
+  if(!val){res.style.color='#ff4a6e';res.textContent='⚠ Enter a code first!';return;}
+  if(redeemedCodes.has(val)){res.style.color='#ff4a6e';res.textContent='⚠ Already redeemed!';return;}
+  const found=CODES.find(c=>c.code===val);
+  if(!found){res.style.color='#ff4a6e';res.textContent='✕ Invalid code.';return;}
+  redeemedCodes.add(val);found.fn();inp.value='';
+  res.style.color='#4ddb82';res.textContent=`✓ ${found.reward}`;
+  toast(`🔑 ${found.reward}`,'#ffd700');
+  saveGame();
+}
+// Keep openCodes as alias for backwards compat (menu button)
+function openCodes(){setShopTab('codes');document.getElementById('shopModal').classList.add('open');}
+window.openCodes=openCodes;
+
+// ── ENHANCED AURA-SPECIFIC CUTSCENES ───────────────────────────────────────
+// Auras with odds > 100k get unique fx injected into cs-aura-fx
+const AURA_CS_FX={
+  // Legendary
+  'Eclipse':{
+    bgColor:'#000011',
+    init(el,W,H){
+      el.innerHTML=`<canvas id="fx-eclipse" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;
+      const c=document.getElementById('fx-eclipse');c.width=W;c.height=H;
+    },
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-eclipse');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // total solar eclipse ring
+      const prog=Math.min(frame/60,1);
+      const r=80+30*Math.sin(frame*.04);
+      // shadow disk
+      x.save();x.shadowColor='#6600cc';x.shadowBlur=40;
+      x.fillStyle='#000005';x.beginPath();x.arc(cx,cy,r*.9,0,Math.PI*2);x.fill();
+      // corona
+      for(let i=0;i<12;i++){
+        const a=i/12*Math.PI*2+frame*.008;const len=30+20*Math.sin(frame*.05+i);
+        x.strokeStyle=`hsla(${270+i*5},80%,60%,${.3+.2*Math.sin(frame*.06+i)})`;
+        x.lineWidth=2;x.shadowColor='#aa44ff';x.shadowBlur=15;
+        x.beginPath();x.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+        x.lineTo(cx+Math.cos(a)*(r+len),cy+Math.sin(a)*(r+len));x.stroke();
+      }
+      // outer glow ring
+      const gr=x.createRadialGradient(cx,cy,r*.85,cx,cy,r*1.6);
+      gr.addColorStop(0,'rgba(100,0,200,.6)');gr.addColorStop(.3,'rgba(80,0,160,.2)');gr.addColorStop(1,'transparent');
+      x.fillStyle=gr;x.beginPath();x.arc(cx,cy,r*1.6,0,Math.PI*2);x.fill();
+      x.restore();
+    }
+  },
+  'Phoenix':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-phoenix" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-phoenix');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-phoenix');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // fire wings
+      for(let wing=-1;wing<=1;wing+=2){
+        for(let i=0;i<20;i++){
+          const a=wing*(Math.PI*.3+i*.06)+frame*.02;
+          const r=60+i*8+Math.sin(frame*.07+i)*10;
+          const hue=20+i*3;
+          x.save();x.globalAlpha=.6-(i/20)*.5;
+          x.fillStyle=`hsl(${hue},100%,${60-i*1.5}%)`;
+          x.shadowColor=`hsl(${hue},100%,55%)`;x.shadowBlur=12;
+          x.beginPath();x.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r*.6,4+Math.sin(frame*.1+i)*2,0,Math.PI*2);
+          x.fill();x.restore();
+        }
+      }
+    }
+  },
+  'Solar':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-solar" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-solar');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-solar');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // solar flares
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2+frame*.015;
+        const len=50+30*Math.sin(frame*.04+i*1.3);
+        const gf=x.createLinearGradient(cx,cy,cx+Math.cos(a)*(80+len),cy+Math.sin(a)*(80+len));
+        gf.addColorStop(0,'rgba(255,220,0,.8)');gf.addColorStop(.5,'rgba(255,140,0,.4)');gf.addColorStop(1,'transparent');
+        x.strokeStyle=gf;x.lineWidth=3+Math.sin(frame*.05+i)*1.5;x.shadowColor='#ffcc00';x.shadowBlur=20;
+        x.beginPath();x.moveTo(cx+Math.cos(a)*65,cy+Math.sin(a)*65);
+        x.lineTo(cx+Math.cos(a)*(130+len),cy+Math.sin(a)*(130+len));x.stroke();
+      }
+    }
+  },
+  'Aurora':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-aurora" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-aurora');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-aurora');if(!c)return;
+      const x=c.getContext('2d');
+      x.clearRect(0,0,W,H);
+      // northern lights curtains
+      for(let band=0;band<5;band++){
+        const yOff=H*.15+band*30+Math.sin(frame*.02+band)*20;
+        const hue=140+band*25+Math.sin(frame*.015)*20;
+        x.save();x.globalAlpha=.12+.06*Math.sin(frame*.03+band);
+        const gb=x.createLinearGradient(0,yOff,0,yOff+120);
+        gb.addColorStop(0,'transparent');gb.addColorStop(.3,`hsl(${hue},90%,55%)`);gb.addColorStop(.7,`hsl(${hue+30},90%,60%)`);gb.addColorStop(1,'transparent');
+        x.fillStyle=gb;
+        x.beginPath();
+        x.moveTo(0,yOff);
+        for(let px=0;px<=W;px+=20){
+          x.lineTo(px,yOff+Math.sin(px*.015+frame*.025+band)*35);
+        }
+        x.lineTo(W,yOff+130);x.lineTo(0,yOff+130);x.closePath();x.fill();
+        x.restore();
+      }
+    }
+  },
+  'Tsunami':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-tsunami" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-tsunami');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-tsunami');if(!c)return;
+      const x=c.getContext('2d');
+      x.clearRect(0,0,W,H);
+      // expanding water rings
+      for(let i=0;i<4;i++){
+        const r=((frame*2+i*60)%350);
+        const alpha=Math.max(0,1-(r/350))*.4;
+        x.save();x.globalAlpha=alpha;
+        x.strokeStyle='#00aaff';x.lineWidth=2;x.shadowColor='#0066ff';x.shadowBlur=10;
+        x.beginPath();x.ellipse(W/2,H/2+80,r*1.6,r*.6,0,0,Math.PI*2);x.stroke();
+        x.restore();
+      }
+    }
+  },
+  'Starfall':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-starfall" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-starfall');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-starfall');if(!c)return;
+      const x=c.getContext('2d');
+      x.clearRect(0,0,W,H);
+      // falling shooting stars
+      for(let i=0;i<10;i++){
+        const seed=i*137.5;
+        const px=((seed+frame*1.5+i*200)%W);
+        const py=((seed*0.7+frame*2.5+i*80)%(H+100))-50;
+        const len=40+20*Math.sin(seed);
+        const gsl=x.createLinearGradient(px,py,px-len*.7,py-len);
+        gsl.addColorStop(0,'rgba(255,240,180,0.9)');gsl.addColorStop(1,'transparent');
+        x.strokeStyle=gsl;x.lineWidth=1.5;x.shadowColor='#ffe8a1';x.shadowBlur=8;
+        x.beginPath();x.moveTo(px,py);x.lineTo(px-len*.7,py-len);x.stroke();
+      }
+    }
+  },
+  // Mythical
+  'Nexus':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-nexus" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-nexus');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-nexus');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // portal vortex rings
+      for(let i=0;i<6;i++){
+        const a=i/6*Math.PI*2+frame*.04;
+        const r=40+i*20+Math.sin(frame*.06+i)*8;
+        x.save();x.globalAlpha=.3-.03*i;
+        x.strokeStyle=`hsl(${340+i*10},90%,60%)`;x.lineWidth=2-i*.2;x.shadowColor='#ff4a6e';x.shadowBlur=15;
+        x.beginPath();x.arc(cx+Math.cos(a)*8,cy+Math.sin(a)*8,r,0,Math.PI*2);x.stroke();
+        x.restore();
+      }
+    }
+  },
+  'Singularity':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-singularity" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-singularity');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-singularity');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // space-bending grid lines
+      for(let i=-6;i<=6;i++){
+        const bend=30*Math.sin(frame*.03+i*.4);
+        x.save();x.globalAlpha=.12;x.strokeStyle='#cc00ff';x.lineWidth=1;
+        x.beginPath();
+        const gx=cx+i*35;
+        x.moveTo(gx+bend,0);x.quadraticCurveTo(gx-bend,H/2,gx+bend,H);x.stroke();
+        x.restore();
+      }
+      for(let i=-4;i<=4;i++){
+        const bend=20*Math.sin(frame*.04+i*.5);
+        x.save();x.globalAlpha=.12;x.strokeStyle='#cc00ff';x.lineWidth=1;
+        x.beginPath();
+        const gy=cy+i*35;
+        x.moveTo(0,gy+bend);x.quadraticCurveTo(W/2,gy-bend,W,gy+bend);x.stroke();
+        x.restore();
+      }
+    }
+  },
+  'Eternal Flame':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-eternal" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-eternal');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-eternal');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // ancient flame pillars
+      for(let p=0;p<3;p++){
+        const px=cx+(-1+p)*120;
+        const pHeight=120+40*Math.sin(frame*.05+p*1.2);
+        for(let j=0;j<pHeight;j+=3){
+          const jj=j/pHeight;
+          const wobble=Math.sin(frame*.1+j*.04+p)*8*(1-jj);
+          x.save();x.globalAlpha=.4*(1-jj);
+          x.fillStyle=`hsl(${30-jj*20},100%,${50+jj*20}%)`;
+          x.shadowColor=`hsl(${20},100%,55%)`;x.shadowBlur=8;
+          x.beginPath();x.arc(px+wobble,cy+60-j,4-jj*3,0,Math.PI*2);x.fill();
+          x.restore();
+        }
+      }
+    }
+  },
+  'Cosmos':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-cosmos" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-cosmos');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-cosmos');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // galaxy spiral arms
+      for(let arm=0;arm<3;arm++){
+        const armOffset=arm/3*Math.PI*2;
+        for(let i=0;i<50;i++){
+          const t=i/50;
+          const a=armOffset+t*Math.PI*3+frame*.012;
+          const r=t*120;
+          const hue=210+arm*40+t*30;
+          x.save();x.globalAlpha=t*.5;
+          x.fillStyle=`hsl(${hue},80%,65%)`;x.shadowColor=`hsl(${hue},90%,55%)`;x.shadowBlur=6;
+          x.beginPath();x.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r*.5,1.5+t*1.5,0,Math.PI*2);x.fill();
+          x.restore();
+        }
+      }
+    }
+  },
+  'Dreamweaver':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-dream" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-dream');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-dream');if(!c)return;
+      const x=c.getContext('2d');
+      x.clearRect(0,0,W,H);
+      // dreamy pastel ribbons
+      for(let r=0;r<4;r++){
+        x.save();x.globalAlpha=.15+.05*Math.sin(frame*.03+r);
+        const hue=280+r*30+Math.sin(frame*.02)*20;
+        const path=new Path2D();
+        path.moveTo(0,H*.3+r*40);
+        for(let px=0;px<W;px+=10){
+          path.lineTo(px,H*.3+r*40+Math.sin(px*.01+frame*.018+r*1.5)*60+Math.cos(px*.008+frame*.012)*40);
+        }
+        path.lineTo(W,H);path.lineTo(0,H);path.closePath();
+        x.fillStyle=`hsl(${hue},70%,70%)`;x.fill(path);
+        x.restore();
+      }
+    }
+  },
+  // Secret
+  '???':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-unknown" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-unknown');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-unknown');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // question mark particles orbiting
+      x.save();x.font='bold 18px Cinzel';x.textAlign='center';x.textBaseline='middle';
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2+frame*.03;
+        const r=90+20*Math.sin(frame*.04+i);
+        x.globalAlpha=.4+.3*Math.sin(frame*.05+i);
+        x.fillStyle='#ff2aff';x.shadowColor='#ff2aff';x.shadowBlur=12;
+        x.fillText('?',cx+Math.cos(a)*r,cy+Math.sin(a)*r*.6);
+      }
+      x.restore();
+    }
+  },
+  'Oblivion':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-oblivion" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-oblivion');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-oblivion');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // static glitch blocks
+      if(frame%2===0){
+        for(let g=0;g<5;g++){
+          const gx=Math.random()*W;const gy=Math.random()*H;
+          const gw=Math.random()*150+50;const gh=Math.random()*6+1;
+          x.save();x.globalAlpha=.3+Math.random()*.3;
+          x.fillStyle=Math.random()>.5?'#ffffff':'#ff2aff';
+          x.fillRect(gx,gy,gw,gh);x.restore();
+        }
+      }
+      // white inward spiral
+      for(let i=0;i<30;i++){
+        const t=i/30;const a=t*Math.PI*6-frame*.04;
+        const r=t*100;
+        x.save();x.globalAlpha=t*.6;x.fillStyle='#ffffff';x.shadowColor='#fff';x.shadowBlur=8;
+        x.beginPath();x.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r*.6,1.5,0,Math.PI*2);x.fill();
+        x.restore();
+      }
+    }
+  },
+  'Void God':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-voidgod-cs" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-voidgod-cs');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-voidgod-cs');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // black hole with gravitational lens
+      for(let ring=0;ring<8;ring++){
+        const r=20+ring*16+Math.sin(frame*.06+ring)*(3+ring);
+        const alpha=.35-.03*ring;
+        x.save();x.globalAlpha=alpha;
+        x.strokeStyle=`hsl(${270+ring*5},70%,${30+ring*5}%)`;
+        x.lineWidth=2-ring*.15;x.shadowColor='#6600aa';x.shadowBlur=15+ring*3;
+        x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();x.restore();
+      }
+      // dark tendrils
+      for(let t=0;t<6;t++){
+        const ta=t/6*Math.PI*2+frame*.018;
+        x.save();x.globalAlpha=.25;x.strokeStyle='#440066';x.lineWidth=1.5;x.shadowColor='#8800ff';x.shadowBlur=8;
+        x.beginPath();x.moveTo(cx+Math.cos(ta)*18,cy+Math.sin(ta)*18);
+        x.bezierCurveTo(
+          cx+Math.cos(ta+.3)*60,cy+Math.sin(ta+.3)*60,
+          cx+Math.cos(ta-.3)*100+Math.sin(frame*.05)*15,cy+Math.sin(ta-.3)*100+Math.cos(frame*.05)*15,
+          cx+Math.cos(ta)*160,cy+Math.sin(ta)*160
+        );
+        x.stroke();x.restore();
+      }
+    }
+  },
+  'The End':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-theend-cs" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-theend-cs');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-theend-cs');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // blood red cracks spreading
+      x.save();x.strokeStyle='#ff0000';x.lineWidth=1;x.shadowColor='#ff0000';x.shadowBlur=10;
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2;
+        const progress=Math.min(frame/80,1);
+        const len=progress*180;
+        x.globalAlpha=.5+.2*Math.sin(frame*.08+i);
+        x.beginPath();
+        let lx=cx,ly=cy;x.moveTo(lx,ly);
+        const steps=6;
+        for(let s=0;s<steps;s++){
+          lx+=Math.cos(a+(Math.random()-.5)*.8)*(len/steps);
+          ly+=Math.sin(a+(Math.random()-.5)*.8)*(len/steps);
+          if(s<steps-1)x.lineTo(lx,ly);
+        }
+        x.stroke();
+      }
+      x.restore();
+      // flicker overlay
+      if(frame%4===0){x.save();x.globalAlpha=.06+Math.random()*.06;x.fillStyle='#ff0000';x.fillRect(0,0,W,H);x.restore();}
+    }
+  },
+  'Celestial Rift':{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-crift" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-crift');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-crift');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // rift crack from center
+      const progress=Math.min(frame/50,1);
+      for(let branch=0;branch<12;branch++){
+        const baseAngle=branch/12*Math.PI*2;
+        const len=progress*(100+50*Math.sin(branch*1.7));
+        const hue=170+branch*12;
+        x.save();x.globalAlpha=.6;x.strokeStyle=`hsl(${hue},100%,70%)`;x.lineWidth=1.5;x.shadowColor=`hsl(${hue},100%,60%)`;x.shadowBlur=15;
+        x.beginPath();let bx=cx,by=cy;x.moveTo(bx,by);
+        const segs=5;
+        for(let s=0;s<segs;s++){
+          bx+=Math.cos(baseAngle+(Math.random()-.5)*.5)*(len/segs);
+          by+=Math.sin(baseAngle+(Math.random()-.5)*.5)*(len/segs);
+          x.lineTo(bx,by);
+        }
+        x.stroke();
+        // flicker glow dot at tip
+        x.globalAlpha=.8*Math.sin(frame*.1+branch);
+        x.fillStyle=`hsl(${hue},100%,80%)`;x.shadowBlur=20;
+        x.beginPath();x.arc(bx,by,3,0,Math.PI*2);x.fill();
+        x.restore();
+      }
+      // pulsing rift center
+      const ringR=20+15*Math.sin(frame*.07);
+      x.save();x.globalAlpha=.4;x.strokeStyle='#00ffff';x.lineWidth=2;x.shadowColor='#00ffff';x.shadowBlur=30;
+      x.beginPath();x.arc(cx,cy,ringR,0,Math.PI*2);x.stroke();x.restore();
+    }
+  },
+  "God's Wrath":{
+    init(el,W,H){el.innerHTML=`<canvas id="fx-gwrath" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`;const c=document.getElementById('fx-gwrath');c.width=W;c.height=H;},
+    tick(el,frame,aura,W,H){
+      const c=document.getElementById('fx-gwrath');if(!c)return;
+      const x=c.getContext('2d');const cx=W/2,cy=H/2;
+      x.clearRect(0,0,W,H);
+      // divine lightning bolts from above
+      if(frame%8<4){
+        for(let bolt=0;bolt<3;bolt++){
+          const bx=cx+(-1+bolt)*130+Math.sin(frame*.3)*20;
+          x.save();x.strokeStyle=`hsl(${45+bolt*15},100%,75%)`;x.lineWidth=2+bolt*.5;x.shadowColor='#ffd700';x.shadowBlur=20;
+          x.globalAlpha=.7;
+          x.beginPath();let lx=bx,ly=0;x.moveTo(lx,ly);
+          for(let s=0;s<8;s++){lx+=(Math.random()-.5)*30;ly+=H*.11;x.lineTo(lx,ly);}
+          x.stroke();x.restore();
+        }
+      }
+      // divine halo rings
+      for(let h=0;h<3;h++){
+        const hr=60+h*35+Math.sin(frame*.05+h)*10;
+        x.save();x.globalAlpha=.2-.04*h;x.strokeStyle=`hsl(${50+h*10},100%,65%)`;x.lineWidth=2;x.shadowColor='#ffd700';x.shadowBlur=12;
+        x.beginPath();x.ellipse(cx,cy,hr,hr*.35,0,0,Math.PI*2);x.stroke();x.restore();
+      }
+    }
+  }
+};
+
+// Patch shouldShowCutscene to include odds > 100k
+const _oldShouldShowCutscene=shouldShowCutscene;
+// Override to show cutscene for any odds >= 100000 regardless
+window.shouldShowCutscene=function(aura){
+  return aura.odds>=100000||RORD.indexOf(aura.rarity)>=4;
+};
+
+// Patch showCutscene to inject aura fx
+const _origShowCutscene=showCutscene;
+window.showCutscene=function(aura,onDone){
+  // call original
+  _origShowCutscene(aura,onDone);
+  // inject aura-specific fx
+  const fxEl=document.getElementById('cs-aura-fx');
+  fxEl.innerHTML='';
+  const fx=AURA_CS_FX[aura.name];
+  if(fx&&aura.odds>=100000){
+    const W=window.innerWidth,H=window.innerHeight;
+    fx.init(fxEl,W,H);
+    // animate loop for this fx
+    let fxFrame=0;
+    function fxLoop(){
+      if(!csActive){fxEl.innerHTML='';return;}
+      requestAnimationFrame(fxLoop);
+      fx.tick(fxEl,fxFrame++,aura,W,H);
+    }
+    fxLoop();
+  }
+};
+
+// Also override shouldShowCutscene used internally
+function shouldShowCutscene(aura){return aura.odds>=100000||RORD.indexOf(aura.rarity)>=4;}
+
+
+// ── SOL'S RNG STYLE ROLLING CUTSCENE ──────────────────────────────────────
+// Triggers for auras with odds >= 10,000 (epic+) on manual non-silent rolls
+let rollingCsActive=false;
+const ROLLING_CS_ODDS=10000;
+
+function playRollingCutscene(finalAura, onDone){
+  rollingCsActive=true;
+  const ri=RORD.indexOf(finalAura.rarity);
+  const totalMs=600+ri*220; // scales: epic~1200ms, legendary~1500ms, mythical~1800ms, secret~2100ms
+  
+  const nameEl=document.getElementById('auraName');
+  const oddsEl=document.getElementById('auraOdds');
+  const flavorEl=document.getElementById('auraFlavor');
+  const badge=document.getElementById('rarityBadge');
+  const stage=document.getElementById('stage');
+  const fl=document.getElementById('flash');
+  
+  // progress bar across the bottom of stage
+  const bar=document.createElement('div');
+  bar.style.cssText='position:absolute;bottom:0;left:0;height:4px;width:0%;border-radius:2px;z-index:10;transition:none;box-shadow:0 0 8px currentColor';
+  bar.style.background=finalAura.color;bar.style.color=finalAura.color;
+  stage.appendChild(bar);
+  
+  // dark bg tint
+  fl.style.background='#000';fl.style.opacity='.7';fl.style.transition='opacity .15s';
+  
+  let elapsed=0;
+  let interval=35;
+  let timer;
+  
+  function tick(){
+    elapsed+=interval;
+    const prog=Math.min(elapsed/totalMs,1);
+    bar.style.width=(prog*100)+'%';
+    
+    // ease in — slow down in last 30%
+    if(prog>0.7){interval=35+Math.pow((prog-0.7)/0.3,2)*200;}
+    
+    // cycle through random auras, biasing toward same rarity near end
+    let fake;
+    if(prog>0.85){
+      // show same rarity only
+      const sameRar=AURAS.filter(a=>a.rarity===finalAura.rarity);
+      fake=sameRar[Math.floor(Math.random()*sameRar.length)];
+    } else {
+      fake=AURAS[Math.floor(Math.random()*AURAS.length)];
+    }
+    nameEl.textContent=fake.name;
+    nameEl.style.color=fake.color;
+    nameEl.style.textShadow='0 0 20px '+fake.color;
+    badge.textContent=RLBL[fake.rarity];
+    badge.className='rarity-badge r-'+fake.rarity;
+    oddsEl.textContent='1 in '+fake.odds.toLocaleString();
+    
+    if(prog<1){
+      timer=setTimeout(tick,interval);
+    } else {
+      // SNAP — final reveal
+      clearTimeout(timer);
+      bar.remove();
+      // big color flash
+      fl.style.background=finalAura.color;
+      fl.style.opacity='0.65';fl.style.transition='opacity .05s';
+      setTimeout(()=>{fl.style.opacity='0';fl.style.transition='opacity .5s';},120);
+      // brief white flash
+      setTimeout(()=>{
+        fl.style.background='#fff';fl.style.opacity='0.3';fl.style.transition='opacity .04s';
+        setTimeout(()=>{fl.style.opacity='0';fl.style.transition='opacity .4s';},80);
+      },60);
+      rollingCsActive=false;
+      onDone();
+    }
+  }
+  tick();
+}
+
+// Patch doRoll to inject rolling cutscene
+const __baseDoRoll=doRoll;
+doRoll=function(count,silent){
+  // only intercept manual single rolls
+  if(!silent&&!csActive&&!rollingCsActive&&(count||currentRollCount)===1){
+    // pre-pick the result
+    const peek=rollAura(totalLuck());
+    if(peek.odds>=ROLLING_CS_ODDS){
+      rolling=true;isRolling=true;
+      const btn=document.getElementById('rollBtn');
+      btn.classList.add('rolling');btn.textContent='ROLLING...';
+      // brief spin
+      let spins=0;const maxSpin=8;
+      const spinIv=setInterval(()=>{
+        const f=AURAS[Math.floor(Math.random()*AURAS.length)];
+        document.getElementById('auraName').textContent=f.name;
+        document.getElementById('auraName').style.color=f.color;
+        if(++spins>=maxSpin){
+          clearInterval(spinIv);isRolling=false;
+          playRollingCutscene(peek,()=>{
+            rolling=false;btn.classList.remove('rolling');btn.textContent='ROLL';
+            execRolls_withResult(peek,1,false);
+          });
+        }
+      },55);
+      return;
+    }
+  }
+  __baseDoRoll(count,silent);
+};
+
+function execRolls_withResult(peekedResult,count,silent){
+  let totalEarned=0;
+  for(let i=0;i<count;i++){
+    const result=i===count-1?peekedResult:rollAura(totalLuck());
+    rolls++;
+    const earned=Math.round((result.coins||1)*coinMult);
+    coins+=earned;totalEarned+=earned;
+    for(const b of tempBoosts)b.rl=Math.max(0,b.rl-1);
+    tempBoosts=tempBoosts.filter(b=>b.rl>0);
+    addToInventory(result);
+  }
+  document.getElementById('sRolls').textContent=rolls.toLocaleString();
+  updCoins();updLuck();updInvUI();
+  setAura(peekedResult,silent);
+  if(!silent)coinPop(totalEarned,document.getElementById('coinAmt'));
+  if(RORD.indexOf(peekedResult.rarity)>=4)toast('✨ '+peekedResult.name+' — '+RLBL[peekedResult.rarity]+'!',peekedResult.color);
+  if(rolls>=100&&!owned['auto_unlocked']){owned['auto_unlocked']=true;updAutoUI();toast('⚙️ Auto-Roller unlocked!','#4ddb82');}
+  else updAutoUI();
+  saveGame();
+}
+
+
+// ── SECRET CODE → CHEAT BUTTON ────────────────────────────────────────────
+const SECRET_CHEAT_CODE='JOESCHEAT';
+let cheatUnlocked=false;
+
+// Check if already unlocked from save
+function checkCheatUnlock(){
+  if(localStorage.getItem('joesrng_cheat')==='1'){activateCheatButton(true);}
+}
+function activateCheatButton(silent){
+  if(cheatUnlocked)return;
+  cheatUnlocked=true;
+  localStorage.setItem('joesrng_cheat','1');
+  const btn=document.createElement('button');
+  btn.id='permCheatBtn';
+  btn.style.cssText='position:fixed;bottom:1.2rem;right:1.2rem;z-index:700;width:44px;height:44px;border-radius:50%;background:rgba(255,42,255,0.12);border:2px solid rgba(255,42,255,0.45);color:#ff2aff;font-size:20px;cursor:pointer;transition:all .2s;box-shadow:0 0 22px rgba(255,42,255,0.18)';
+  btn.textContent='☠';btn.title='Cheat Menu (secret unlock)';
+  btn.addEventListener('click',openCheat);
+  btn.addEventListener('mouseover',()=>{btn.style.background='rgba(255,42,255,0.28)';btn.style.transform='scale(1.1)';});
+  btn.addEventListener('mouseout',()=>{btn.style.background='rgba(255,42,255,0.12)';btn.style.transform='scale(1)';});
+  document.body.appendChild(btn);
+  if(!silent)toast('☠ Cheat Menu button unlocked permanently!','#ff2aff');
+}
+
+// Add secret code to codes array
+CODES.push({
+  code:SECRET_CHEAT_CODE,
+  reward:'☠️ Permanent Cheat Menu button unlocked!',
+  fn:()=>activateCheatButton(false)
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+makeStars();resize();
+window.addEventListener('resize',()=>{resize();if(curAura)spawnParts(curAura);});
+animate();
+const starter={name:"???",rarity:"common",odds:1,color:"#6b6880",p:"dust",flavor:"Press ROLL to begin your journey",coins:0};
+curAura=starter;spawnParts(starter);
+const didLoad=loadGame();
+updCoins();updLuck();updCoinSub();updAutoUI();updInvUI();checkCheatUnlock();
+// autosave every 15 seconds
+setInterval(saveGame,15000);
+runLoader(()=>{
+  dismissLoader();
+  if(didLoad)toast('💾 Save loaded!','#4ddb82');
+});
+</script>
+</body>
+</html>
